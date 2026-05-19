@@ -271,7 +271,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
       <div class="sum-grid" id="final-sum-cards"></div>
       <div class="tbl-wrap">
         <table class="budget-table">
-          <thead><tr><th>코드</th><th>항목</th><th style="width:120px">총 예산</th><th style="width:110px">집행액</th><th style="width:110px">잔액</th><th style="width:60px">진행률</th><th style="min-width:100px">진행 바</th></tr></thead>
+          <thead><tr><th>코드</th><th>항목</th><th style="width:110px">회당예산</th><th style="width:120px">총 예산</th><th style="width:110px">집행액</th><th style="width:110px">잔액</th></tr></thead>
           <tbody id="budget-body"></tbody>
           <tfoot id="budget-foot"></tfoot>
         </table>
@@ -446,7 +446,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
         <div class="info-item full"><label>프로젝트명</label><input id="s-projname" oninput="saveProjectInfo()"></div>
         <div class="info-item"><label>제작사</label><input id="s-company" oninput="saveProjectInfo()"></div>
         <div class="info-item"><label>담당자</label><input id="s-manager" oninput="saveProjectInfo()"></div>
-        <div class="info-item"><label>총 회차</label><input type="number" id="s-episodes" value="12" oninput="saveProjectInfo()"></div>
+        <div class="info-item"><label>방영횟수</label><input type="number" id="s-episodes" value="12" oninput="saveProjectInfo()"></div>
         <div class="info-item"><label>촬영 시작년도</label><input type="number" id="s-year" value="2025" oninput="saveProjectInfo()"></div>
       </div>
     </div>
@@ -521,18 +521,37 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     </div>
   </div>
   <div class="card">
-    <div class="card-header">💳 법인카드/선급금정산 설정
-      <button class="btn btn-add btn-sm" onclick="addCardUser()">+ 사용자 추가</button>
+    <div class="card-header">선급금 설정
+      <button class="btn btn-add btn-sm" onclick="addCardUser('선급금')">+ 사용자 추가</button>
     </div>
     <div class="card-body">
-      <div id="card-user-list"></div>
+      <div id="card-user-list-선급금"></div>
       <div class="settings-section" style="margin-top:16px">
-        <h3>💳 중항목 (법인카드/선급금)</h3>
+        <h3>중항목 (선급금)</h3>
+        <div class="tag-list" id="tags-amid"></div>
+        <div class="tag-input-row"><input id="new-amid" placeholder="예) 선급금집행" onkeydown="if(event.key==='Enter')addTag('advanceMids','new-amid','tags-amid')"><button class="btn btn-add btn-sm" onclick="addTag('advanceMids','new-amid','tags-amid')">+</button></div>
+      </div>
+      <div class="settings-section">
+        <h3>소항목 (선급금)</h3>
+        <div class="tag-list" id="tags-amin"></div>
+        <div class="tag-input-row"><input id="new-amin" placeholder="예) 현금지급" onkeydown="if(event.key==='Enter')addTag('advanceMinors','new-amin','tags-amin')"><button class="btn btn-add btn-sm" onclick="addTag('advanceMinors','new-amin','tags-amin')">+</button></div>
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="saveCardUsers();saveTagSettings()">✓ 저장</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">법인카드 설정
+      <button class="btn btn-add btn-sm" onclick="addCardUser('법인카드')">+ 사용자 추가</button>
+    </div>
+    <div class="card-body">
+      <div id="card-user-list-법인카드"></div>
+      <div class="settings-section" style="margin-top:16px">
+        <h3>중항목 (법인카드)</h3>
         <div class="tag-list" id="tags-cmid"></div>
         <div class="tag-input-row"><input id="new-cmid" placeholder="예) 제작진행비" onkeydown="if(event.key==='Enter')addTag('cardMids','new-cmid','tags-cmid')"><button class="btn btn-add btn-sm" onclick="addTag('cardMids','new-cmid','tags-cmid')">+</button></div>
       </div>
       <div class="settings-section">
-        <h3>📌 소항목 (법인카드/선급금)</h3>
+        <h3>소항목 (법인카드)</h3>
         <div class="tag-list" id="tags-cmin"></div>
         <div class="tag-input-row"><input id="new-cmin" placeholder="예) 식대" onkeydown="if(event.key==='Enter')addTag('cardMinors','new-cmin','tags-cmin')"><button class="btn btn-add btn-sm" onclick="addTag('cardMinors','new-cmin','tags-cmin')">+</button></div>
       </div>
@@ -618,6 +637,8 @@ let appSettings = {
   bizCats:['장소사용료','제작용역','연출용역','홍보비','임차료','관리비','인터넷사용료','기타'],
   cardMids:['제작진행비','프로그램진행','차량대여','장비','세트비','홍보'],
   cardMinors:['식대','부식','주차','주유','기타','장소사용료','숙박','연료비'],
+  advanceMids:['선급금집행','현장경비','스태프비','장소비','장비비','기타'],
+  advanceMinors:['현금지급','계좌이체','카드결제','기타'],
   banks:['신한은행','국민은행','기업은행','하나은행','우리은행','농협은행','카카오뱅크','토스뱅크'],
   actorRoles_주연:['주인공','히로인','남주','여주'],
   actorRoles_조연:['형사','의사','변호사','친구'],
@@ -683,7 +704,7 @@ function loadLocalSettings(){
 }
 function mergeSettings(d){
   if(d.cards)appSettings.cards=d.cards;
-  ['personCats','bizCats','cardMids','cardMinors','banks','actorRoles_주연','actorRoles_조연','actorRoles_단역','actorRoles_무술'].forEach(k=>{if(d[k])appSettings[k]=d[k];});
+  ['personCats','bizCats','cardMids','cardMinors','advanceMids','advanceMinors','banks','actorRoles_주연','actorRoles_조연','actorRoles_단역','actorRoles_무술'].forEach(k=>{if(d[k])appSettings[k]=d[k];});
   if(d.customMonthlySections)appSettings.customMonthlySections=d.customMonthlySections;
   if(d.customActorSections)appSettings.customActorSections=d.customActorSections;
   (d.customMonthlySections||[]).concat(d.customActorSections||[]).forEach(s=>{if(d[s.key])appSettings[s.key]=d[s.key];});
@@ -1005,9 +1026,11 @@ function updateModalCodeSelect(){
   const el=document.getElementById('m-code');if(!el)return;
   el.innerHTML=budgetCodes.map(b=>`<option value="${b.code}">${b.code} ${b.name}</option>`).join('');
 }
-function updateModalMidSelects(){
+function updateModalMidSelects(cardType){
   const so=(id,arr)=>{const el=document.getElementById(id);if(!el)return;el.innerHTML=arr.map(v=>`<option>${esc(v)}</option>`).join('');};
-  so('m-mid',appSettings.cardMids); so('m-minor',appSettings.cardMinors);
+  const isAdv=(cardType||'법인카드')==='선급금';
+  so('m-mid',isAdv?(appSettings.advanceMids||[]):appSettings.cardMids);
+  so('m-minor',isAdv?(appSettings.advanceMinors||[]):appSettings.cardMinors);
 }
 
 // ════════════════════════════════════════════
@@ -1049,27 +1072,26 @@ function renderFinal(){
   budgetCodes.forEach(b=>{
     const act=rows.filter(r=>r.code===b.code).reduce((s,r)=>s+r.supply,0);
     const rem=b.budget-act;
-    const p=b.budget?Math.min((act/b.budget)*100,100):0;
-    const pReal=b.budget?((act/b.budget)*100).toFixed(1):0;
-    const pfClass=p<50?'pf-safe':p<80?'pf-warn':'pf-danger';
+    const eps=projectInfo.episodes||1;
+    const perEp=Math.round(b.budget/eps);
     bTotBudget+=b.budget; bTotActual+=act;
     bHtml+=`<tr>
       <td style="text-align:center;font-weight:700;color:#3949ab">${b.code}</td>
       <td>${esc(b.name)}</td>
+      <td class="amt">${fmtNum(perEp)}</td>
       <td class="amt">${fmtNum(b.budget)}</td>
       <td class="amt ${act>b.budget?'over':''}">${fmtNum(act)}</td>
       <td class="amt ${rem<0?'over':''}">${fmtNum(Math.abs(rem))}${rem<0?'<span class="over-badge">초과</span>':''}</td>
-      <td style="text-align:center;font-weight:700;color:${p<50?'#2e7d32':p<80?'#e65100':'#c62828'}">${pReal}%</td>
-      <td><div class="progress-wrap"><div class="progress-fill ${pfClass}" style="width:${p}%"></div></div></td>
     </tr>`;
   });
   document.getElementById('budget-body').innerHTML=bHtml;
   const bRem=bTotBudget-bTotActual;
+  const bTotPerEp=Math.round(bTotBudget/(projectInfo.episodes||1));
   document.getElementById('budget-foot').innerHTML=`<tr style="font-weight:700;background:#e8eaf6">
     <td colspan="2" style="text-align:center;color:#1a237e">합 계</td>
+    <td class="amt">${fmtNum(bTotPerEp)}</td>
     <td class="amt">${fmtNum(bTotBudget)}</td><td class="amt">${fmtNum(bTotActual)}</td>
-    <td class="amt ${bRem<0?'over':''}">${fmtNum(Math.abs(bRem))}${bRem<0?'<span class="over-badge">초과</span>':''}</td>
-    <td style="text-align:center">${bTotBudget?((bTotActual/bTotBudget)*100).toFixed(1):0}%</td><td></td></tr>`;
+    <td class="amt ${bRem<0?'over':''}">${fmtNum(Math.abs(bRem))}${bRem<0?'<span class="over-badge">초과</span>':''}</td></tr>`;
 
   // 캐시플로우 테이블
   let cfHtml='';let cumul=0;let cfTotals={a:0,p:0,b:0,c:0,t:0,tot:0};
@@ -1215,25 +1237,32 @@ function delBiz(id){
 // ════════════════════════════════════════════
 function buildCardTabs(){
   const wrap=document.getElementById('card-tabs-wrap');if(!wrap)return;
+  const advCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='선급금');
+  const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
+  const grpStyle='display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:700;color:#888;white-space:nowrap;border-right:1px solid #e0e0e0;margin-right:2px;';
   // 탭 버튼
-  let tabHtml=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px">`;
+  let tabHtml=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
   tabHtml+=`<div class="tab" id="ctab-settlement" onclick="switchCardTab('settlement')" style="border-bottom-color:transparent">정산서</div>`;
-  appSettings.cards.forEach((c,i)=>{tabHtml+=`<div class="tab" id="ctab-${c.id}" onclick="switchCardTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
+  if(advCards.length){
+    tabHtml+=`<div style="${grpStyle}">선급금</div>`;
+    advCards.forEach(c=>{tabHtml+=`<div class="tab" id="ctab-${c.id}" onclick="switchCardTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
+  }
+  if(corpCards.length){
+    tabHtml+=`<div style="${grpStyle}">법인카드</div>`;
+    corpCards.forEach(c=>{tabHtml+=`<div class="tab" id="ctab-${c.id}" onclick="switchCardTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
+  }
   tabHtml+=`<div class="tab" id="ctab-transfer-card" onclick="switchCardTab('transfer-card')" style="border-bottom-color:transparent">계좌이체</div>`;
   tabHtml+=`</div></div>`;
   // 각 카드 컨텐츠
-  appSettings.cards.forEach((c,i)=>{
+  appSettings.cards.forEach(c=>{
     if(!cardData[c.id])cardData[c.id]={};
     if(!selected[c.id])selected[c.id]=new Set();
     if(!filters[c.id])filters[c.id]={};
     tabHtml+=buildCardPanel(c,false);
   });
-  // 계좌이체 패널
   tabHtml+=buildTransferPanel();
-  // 선급금 정산서 패널
   tabHtml+=buildSettlementPanel();
   wrap.innerHTML=tabHtml;
-  // 정산서를 첫 번째 기본 탭으로 활성화
   const initTab=currentCardTab||'settlement';
   switchCardTab(initTab);
   appSettings.cards.forEach(c=>refreshCardTable(c.id));
@@ -1551,7 +1580,7 @@ function openCardModal(cid){
   const d=new Date();
   document.getElementById('m-date').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   document.getElementById('m-month').value=d.getMonth()+1;
-  updateModalCodeSelect();updateModalMidSelects();
+  updateModalCodeSelect();updateModalMidSelects(card?.type);
   document.getElementById('card-modal').classList.add('show');
   setTimeout(()=>document.getElementById('m-detail').focus(),200);
 }
@@ -1701,20 +1730,24 @@ function saveBudget(){
   showToast('✅ 예산 설정이 저장되었습니다.');
 }
 function renderCardUserList(){
-  document.getElementById('card-user-list').innerHTML=appSettings.cards.map((c,i)=>`
+  const buildRow=(c,i)=>`
     <div class="card-user-row">
       <div class="row-h"><span>사용자 ${i+1}</span><button class="btn btn-danger btn-sm" onclick="removeCardUser(${i})">삭제</button></div>
-      <div class="cu-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="cu-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}"></div>
         <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}"></div>
         <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}"></div>
-        <div class="cu-field"><label>구분</label><select id="cu-type-${i}"><option value="법인카드" ${(c.type||'법인카드')==='법인카드'?'selected':''}>법인카드</option><option value="선급금" ${c.type==='선급금'?'selected':''}>선급금</option></select></div>
       </div>
-    </div>`).join('');
+    </div>`;
+  const advEl=document.getElementById('card-user-list-선급금');
+  const corpEl=document.getElementById('card-user-list-법인카드');
+  if(advEl)advEl.innerHTML=appSettings.cards.filter(c=>c.type==='선급금').map((c,_)=>{const i=appSettings.cards.indexOf(c);return buildRow(c,i);}).join('')||'<p style="color:#aaa;font-size:12px;padding:8px 0">등록된 선급금 사용자가 없습니다.</p>';
+  if(corpEl)corpEl.innerHTML=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드').map((c,_)=>{const i=appSettings.cards.indexOf(c);return buildRow(c,i);}).join('')||'<p style="color:#aaa;font-size:12px;padding:8px 0">등록된 법인카드 사용자가 없습니다.</p>';
 }
-function addCardUser(){
+function addCardUser(type){
+  const t=type||'법인카드';
   const newId='card'+Date.now().toString().slice(-8);
-  appSettings.cards.push({id:newId,cardNum:'',person:'새 사용자',tabLabel:'신규',type:'법인카드'});
+  appSettings.cards.push({id:newId,cardNum:'',person:'새 사용자',tabLabel:'신규',type:t});
   cardData[newId]={};selected[newId]=new Set();filters[newId]={};
   renderCardUserList();showToast('저장 버튼을 눌러 확정하세요.');
 }
@@ -1729,7 +1762,7 @@ function saveCardUsers(){
     c.tabLabel=document.getElementById(`cu-label-${i}`)?.value||c.tabLabel;
     c.cardNum=document.getElementById(`cu-num-${i}`)?.value||c.cardNum;
     c.person=document.getElementById(`cu-person-${i}`)?.value||c.person;
-    c.type=document.getElementById(`cu-type-${i}`)?.value||'법인카드';
+    // type은 각 섹션(선급금/법인카드)에서 추가되므로 기존 type 유지
   });
   persistSettings();buildCardTabs();showToast('✅ 카드 사용자가 저장되었습니다.');
 }
@@ -1737,7 +1770,9 @@ function renderTagSettings(){
   const render=(key,elId)=>{const el=document.getElementById(elId);if(!el)return;el.innerHTML=(appSettings[key]||[]).map(v=>`<span class="tag">${esc(v)}<button onclick="removeTag('${key}','${esc(v)}','${elId}')">×</button></span>`).join('');};
   // 월정산
   render('personCats','tags-pcat');render('bizCats','tags-bcat');render('banks','tags-bank');
-  // 카드 (카드사용자 카드 안)
+  // 선급금 항목
+  render('advanceMids','tags-amid');render('advanceMinors','tags-amin');
+  // 법인카드 항목
   render('cardMids','tags-cmid');render('cardMinors','tags-cmin');
   // 출연료 grade별
   render('actorRoles_주연','tags-a-주연');render('actorRoles_조연','tags-a-조연');
