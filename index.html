@@ -108,12 +108,13 @@ body{font-family:'Malgun Gothic','맑은 고딕',Arial,sans-serif;background:#f0
 .progress-fill{height:100%;border-radius:10px;transition:width .4s}
 .pf-safe{background:#4caf50}.pf-warn{background:#ff9800}.pf-danger{background:#f44336}
 /* ── Cashflow table ── */
-.cashflow-table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px}
-.cashflow-table th{background:#1a237e;color:#fff;padding:7px 8px;text-align:center;border:1px solid #283593;font-size:11px}
-.cashflow-table td{padding:6px 8px;border:1px solid #eee;text-align:right;font-family:monospace}
-.cashflow-table td:first-child{text-align:center;font-weight:700;color:#1a237e;background:#e8eaf6;font-family:inherit}
-.cashflow-table tr:last-child td{font-weight:700;background:#ede7f6}
-.cashflow-table .cumul{color:#4527a0;font-weight:700}
+.cashflow-table{width:100%;border-collapse:collapse;font-size:12px;min-width:1100px}
+.cashflow-table th{background:#1a237e;color:#fff;padding:7px 8px;text-align:center;border:1px solid #283593;font-size:11px;white-space:nowrap}
+.cashflow-table td{padding:6px 8px;border:1px solid #eee;text-align:right;font-family:monospace;font-size:12px}
+.cashflow-table td:first-child{text-align:center;font-weight:700;color:#3949ab;background:#e8eaf6;font-family:inherit;min-width:40px}
+.cashflow-table td:nth-child(2){text-align:left;font-family:inherit;background:#f5f7fa;color:#222}
+.cashflow-table tr:last-child td{font-weight:700;background:#ede7f6;color:#1a237e}
+.cashflow-table .cf-total{font-weight:700;color:#1a237e}
 /* ── Filter bar ── */
 .filter-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 13px;background:#f8f9fa;border-bottom:1px solid #e8e8e8}
 .filter-bar select{padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;flex:1;min-width:90px}
@@ -243,7 +244,8 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     <div class="tab active" onclick="switchTab('final')">📊 최종정산</div>
     <div class="tab" onclick="switchTab('monthly')">📑 월정산</div>
     <div class="tab" onclick="switchTab('actor')">🎭 출연료</div>
-    <div class="tab" id="tab-btn-cards" onclick="switchTab('cards')">💳 법인카드/선급금</div>
+    <div class="tab" id="tab-btn-corp" onclick="switchTab('corp')">💳 법인카드정산</div>
+    <div class="tab" id="tab-btn-adv" onclick="switchTab('adv')">💰 선급금정산</div>
     <div class="tab" onclick="switchTab('settings')">⚙️ 설정</div>
   </div>
 </div>
@@ -271,7 +273,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
       <div class="sum-grid" id="final-sum-cards"></div>
       <div class="tbl-wrap">
         <table class="budget-table">
-          <thead><tr><th>코드</th><th>항목</th><th style="width:110px">회당예산</th><th style="width:120px">총 예산</th><th style="width:110px">집행액</th><th style="width:110px">잔액</th></tr></thead>
+          <thead><tr><th>코드</th><th>항목</th><th style="width:110px">회당예산</th><th style="width:120px">총 예산</th><th style="width:110px">집행액</th><th style="width:110px">잔액</th><th style="width:70px">진행률</th></tr></thead>
           <tbody id="budget-body"></tbody>
           <tfoot id="budget-foot"></tfoot>
         </table>
@@ -279,11 +281,11 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     </div>
   </div>
   <div class="card">
-    <div class="card-header">📈 월별 캐시플로우</div>
+    <div class="card-header">📈 예산코드별 월별 집행 현황</div>
     <div class="card-body" style="padding:10px 0">
       <div class="tbl-wrap">
         <table class="cashflow-table">
-          <thead><tr><th>월</th><th>출연료</th><th>월정산(개인)</th><th>월정산(업체)</th><th>법인카드</th><th>계좌이체</th><th>월 지출</th><th>누적 지출</th><th>잔여 예산</th></tr></thead>
+          <thead id="cashflow-head"><tr><th>코드</th><th style="text-align:left;min-width:90px">항목</th><th>1월</th><th>2월</th><th>3월</th><th>4월</th><th>5월</th><th>6월</th><th>7월</th><th>8월</th><th>9월</th><th>10월</th><th>11월</th><th>12월</th><th>합계</th></tr></thead>
           <tbody id="cashflow-body"></tbody>
           <tfoot id="cashflow-foot"></tfoot>
         </table>
@@ -424,16 +426,18 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
 </div>
 
 <!-- ══════════════════════════════════════
-     TAB 4: 카드/선급금 (동적)
+     TAB 4: 법인카드정산 (동적)
 ══════════════════════════════════════ -->
-<div id="tab-cards" class="tab-content">
-  <div id="card-tabs-wrap"></div><!-- 동적 생성 -->
+<div id="tab-corp" class="tab-content">
+  <div id="corp-tabs-wrap"></div><!-- 동적 생성 -->
 </div>
 
 <!-- ══════════════════════════════════════
-     TAB 4: 계좌이체
+     TAB 5: 선급금정산 (동적)
 ══════════════════════════════════════ -->
-<div id="tab-transfer" class="tab-content"></div>
+<div id="tab-adv" class="tab-content">
+  <div id="adv-tabs-wrap"></div><!-- 동적 생성 -->
+</div>
 
 <!-- ══════════════════════════════════════
      TAB 5: 설정
@@ -448,6 +452,8 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
         <div class="info-item"><label>담당자</label><input id="s-manager" oninput="saveProjectInfo()"></div>
         <div class="info-item"><label>방영횟수</label><input type="number" id="s-episodes" value="12" oninput="saveProjectInfo()"></div>
         <div class="info-item"><label>촬영 시작년도</label><input type="number" id="s-year" value="2025" oninput="saveProjectInfo()"></div>
+        <div class="info-item"><label>집행 시작 월</label><select id="s-start-month" onchange="saveProjectInfo();renderFinal()"><option value="1">1월</option><option value="2">2월</option><option value="3">3월</option><option value="4">4월</option><option value="5">5월</option><option value="6">6월</option><option value="7">7월</option><option value="8">8월</option><option value="9">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option></select></div>
+        <div class="info-item"><label>운영 개월</label><select id="s-op-months" onchange="saveProjectInfo();renderFinal()"><option value="1">1개월</option><option value="2">2개월</option><option value="3">3개월</option><option value="4">4개월</option><option value="5">5개월</option><option value="6">6개월</option><option value="7">7개월</option><option value="8">8개월</option><option value="9">9개월</option><option value="10">10개월</option><option value="11">11개월</option><option value="12">12개월</option><option value="13">13개월</option><option value="14">14개월</option><option value="15">15개월</option><option value="16">16개월</option><option value="17">17개월</option><option value="18">18개월</option><option value="19">19개월</option><option value="20">20개월</option><option value="21">21개월</option><option value="22">22개월</option><option value="23">23개월</option><option value="24">24개월</option></select></div>
       </div>
     </div>
   </div>
@@ -646,7 +652,7 @@ let appSettings = {
   actorRoles_무술:['무술지도','액션스턴트'],
   settlementInfo:{prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'},
 };
-let projectInfo = {name:'TV조선 드라마 프로젝트',company:'주식회사 티엠이 그룹',manager:'홍승철',episodes:12,year:2025};
+let projectInfo = {name:'TV조선 드라마 프로젝트',company:'주식회사 티엠이 그룹',manager:'홍승철',episodes:12,year:2025,startMonth:1,opMonths:12};
 let personData={}, bizData={}, cardData={}, transferData={}, actorData={};
 let isFirebase=false, demoMode=false;
 let saveTimer={}, pwaPrompt=null;
@@ -677,7 +683,7 @@ function startDemo(){demoMode=true;document.getElementById('setup-screen').style
 function appInit(){
   loadLocalSettings();
   appSettings.cards.forEach(c=>{if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};});
-  buildCardTabs();
+  buildCorpTabs();buildAdvTabs();
   renderBudgetEditList();
   renderCardUserList();
   renderCustomSections();
@@ -712,7 +718,7 @@ function mergeSettings(d){
 }
 function rebuildAll(){
   appSettings.cards.forEach(c=>{if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};});
-  buildCardTabs(); renderCardUserList(); renderCustomSections(); renderTagSettings();
+  buildCorpTabs();buildAdvTabs(); renderCardUserList(); renderCustomSections(); renderTagSettings();
   renderPersonTable(); renderBizTable(); renderActorTable(); refreshTransferTable(); renderFinal();
   renderInvoice();
   updateModalCodeSelect(); updateModalMidSelects();
@@ -721,12 +727,16 @@ function applyProjectInfo(){
   _set('s-projname',projectInfo.name||'');_set('s-company',projectInfo.company||'');
   _set('s-manager',projectInfo.manager||'');_set('s-episodes',projectInfo.episodes||12);
   _set('s-year',projectInfo.year||2025);
+  const smSel=document.getElementById('s-start-month');
+  if(smSel)smSel.value=projectInfo.startMonth||1;
+  const omSel=document.getElementById('s-op-months');
+  if(omSel)omSel.value=projectInfo.opMonths||12;
   setText('hdr-sub',projectInfo.name||'드라마 통합 정산 시스템');
 }
 function saveProjectInfo(){
   clearTimeout(saveTimer.proj);
   saveTimer.proj=setTimeout(()=>{
-    projectInfo={name:_v('s-projname'),company:_v('s-company'),manager:_v('s-manager'),episodes:+_v('s-episodes')||12,year:+_v('s-year')||2025};
+    projectInfo={name:_v('s-projname'),company:_v('s-company'),manager:_v('s-manager'),episodes:+_v('s-episodes')||12,year:+_v('s-year')||2025,startMonth:+(document.getElementById('s-start-month')?.value)||1,opMonths:+(document.getElementById('s-op-months')?.value)||12};
     localStorage.setItem('integrated_proj',JSON.stringify(projectInfo));
     dbSet('projectInfo',projectInfo);
     setText('hdr-sub',projectInfo.name);
@@ -745,6 +755,8 @@ function switchTab(id){
   const el=document.getElementById(`tab-${id}`);if(el)el.classList.add('active');
   if(id==='final')renderFinal();
   if(id==='monthly'&&currentMonthlySubTab==='invoice')renderInvoice();
+  if(id==='corp'){const defC=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드')[0]?.id||'';if(defC)switchCorpTab(currentCorpTab&&currentCorpTab!=='corp-settlement'&&currentCorpTab!=='corp-transfer'?currentCorpTab:defC);}
+  if(id==='adv'){switchAdvTab(currentAdvTab||'adv-settlement');}
 }
 function switchSubTab(group,id){
   currentMonthlySubTab=id;
@@ -838,9 +850,12 @@ function calcTrNet(sup,vat,tax,ins){return (sup||0)+(vat||0)-(tax||0)-(ins||0);}
 
 // ── 출연료 자동계산 ──
 function calcActor(r){
-  const feePerEp=+r.feePerEp||0, episodes=+r.episodes||0, extra=+r.extra||0, ratio=+r.ratio||1;
+  const feePerEp=+r.feePerEp||0, episodes=+r.episodes||0, extra=+r.extra||0;
   const feeTot=feePerEp*episodes;
   const isSimple=(r.grade==='주연'||r.grade==='조연');
+  const isMid=(r.grade==='단역'||r.grade==='무술');
+  // 단역/무술은 정산비율 없이 feeTot+extra, 주연/조연은 feeTot만, 나머지는 ratio 적용
+  const ratio=(!isSimple&&!isMid)?(+r.ratio||1):1;
   const settled=isSimple?feeTot:(feeTot+extra)*ratio;
   const insComp=Math.floor((settled*0.75*0.008)/10)*10; // 고용보험(회사)
   const vat=(r.type==='세계')?Math.floor(settled*0.1/10)*10:0;
@@ -870,6 +885,7 @@ function switchActorTab(grade){
 // ════════════════════════════════════════════
 function renderActorTable(){
   const isSimple=(currentActorGrade==='주연'||currentActorGrade==='조연');
+  const isMid=(currentActorGrade==='단역'||currentActorGrade==='무술'); // 추가수당 있음, 정산비율 없음
   // 헤더 렌더링
   const thead=document.getElementById('actor-thead');
   if(thead){
@@ -878,8 +894,8 @@ function renderActorTable(){
       <th>월</th><th>예산코드</th><th>배역명</th><th>성명</th>
       <th>조합원</th><th>구분</th><th>회당출연료</th><th>횟수</th>
       <th>출연료합계<span class="auto-badge">자동</span></th>`;
-    if(!isSimple){
-      hCols+=`<th>추가수당</th><th>정산비율</th><th>정산후합계<span class="auto-badge">자동</span></th>`;
+    if(isMid){
+      hCols+=`<th>추가수당</th><th>정산후합계<span class="auto-badge">자동</span></th>`;
     }
     hCols+=`<th>고용보험(회사)<span class="auto-badge">자동</span></th>
       <th>부가세<span class="auto-badge">자동</span></th>
@@ -894,13 +910,12 @@ function renderActorTable(){
     </tr>`;
     thead.innerHTML=hCols;
   }
-  // tfoot 렌더링
+  // tfoot 렌더링 — colspan=8: 월~횟수(8열), at-fee = 출연료합계 위치
   const tfoot=document.getElementById('actor-tfoot');
   if(tfoot){
-    const colsBefore=isSimple?9:12;
-    let tfCols=`<tr class="total-r"><td></td><td colspan="${colsBefore}" style="text-align:center">총 계 (${currentActorGrade})</td>`;
+    let tfCols=`<tr class="total-r"><td></td><td colspan="8" style="text-align:right;padding-right:8px;font-weight:700">합 계</td>`;
     tfCols+=`<td class="ac" id="at-fee">0</td>`;
-    if(!isSimple){tfCols+=`<td class="ac" id="at-extra">0</td><td></td><td class="ac" id="at-settled">0</td>`;}
+    if(isMid){tfCols+=`<td class="ac" id="at-extra">0</td><td class="ac" id="at-settled">0</td>`;}
     tfCols+=`<td class="ac" id="at-ins">0</td><td class="ac" id="at-vat">0</td><td class="ac" id="at-union">0</td>
       <td class="ac" id="at-itax">0</td><td class="ac" id="at-rtax">0</td><td class="ac" id="at-eins">0</td>
       <td class="ac" id="at-deduct">0</td><td class="ac" id="at-net">0</td><td class="ac" id="at-total">0</td>
@@ -919,25 +934,28 @@ function renderActorTable(){
   });
   const roles=(appSettings[`actorRoles_${currentActorGrade}`]||[]);
   const roleOpts=roles.length?roles.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join(''):`<option value="">-</option>`;
-  const colCount=isSimple?24:27;
+  const colCount=isSimple?22:24;
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="${colCount}" class="empty-state">${currentActorGrade} 출연료 정산 내역이 없습니다.</td></tr>`;updateActorTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const c=calcActor(r);
     const sel=(selected.actor||new Set()).has(id);
+    // 배역명: 단역은 직접 입력, 나머지는 select
+    const roleCel=currentActorGrade==='단역'
+      ? `<td><input value="${esc(r.role||'')}" onchange="updA('${id}','role',this.value)" style="min-width:70px" placeholder="배역명 입력"></td>`
+      : `<td><select onchange="updA('${id}','role',this.value)" style="min-width:70px"><option value="${esc(r.role||'')}" selected>${esc(r.role||'선택')}</option>${roleOpts}</select></td>`;
     let row=`<tr id="ra-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('actor','${id}',this.checked)"></td>
       <td><select onchange="updA('${id}','month',+this.value)" style="min-width:62px">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
       <td class="code-cell"><select onchange="updA('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:110px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
-      <td><select onchange="updA('${id}','role',this.value)" style="min-width:70px"><option value="${esc(r.role||'')}" selected>${esc(r.role||'선택')}</option>${roleOpts}</select></td>
+      ${roleCel}
       <td><input value="${esc(r.name||'')}" onchange="updA('${id}','name',this.value)" style="min-width:55px" placeholder="성명"></td>
       <td style="text-align:center"><input type="checkbox" ${r.union?'checked':''} onchange="updA('${id}','union',this.checked)" title="조합원 여부"></td>
       <td><select onchange="updA('${id}','type',this.value)" style="min-width:52px"><option ${r.type==='원징'?'selected':''}>원징</option><option ${r.type==='세계'?'selected':''}>세계</option></select></td>
       <td class="ac"><input type="text" class="num-input" value="${fmtI(r.feePerEp)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','feePerEp',parseI(this.value))" style="text-align:right;min-width:78px"></td>
       <td class="ac"><input type="number" value="${r.episodes||0}" onchange="updA('${id}','episodes',+this.value)" style="text-align:right;min-width:36px"></td>
       <td class="auto-c">${fmtNum(c.feeTot)}</td>`;
-    if(!isSimple){
+    if(isMid){
       row+=`<td class="ac"><input type="text" class="num-input" value="${fmtI(r.extra)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','extra',parseI(this.value))" style="text-align:right;min-width:90px"></td>
-      <td class="ac"><input type="number" value="${r.ratio!=null?r.ratio:1}" step="0.01" min="0" max="1" onchange="updA('${id}','ratio',+this.value)" style="text-align:right;min-width:50px"></td>
       <td class="auto-c">${fmtNum(c.settled)}</td>`;
     }
     row+=`<td class="auto-c">${fmtNum(c.insComp)}</td>
@@ -992,19 +1010,23 @@ function exportActorSheet(){
   const grades=['주연','조연','단역','무술'];
   grades.forEach(grade=>{
     const isSimple=(grade==='주연'||grade==='조연');
+    const isMid=(grade==='단역'||grade==='무술');
     const gradeData=Object.values(actorData||{}).filter(r=>r.grade===grade);
     if(!gradeData.length)return;
+    const baseHdr=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
+    const tailHdr=['고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고'];
     const headers=isSimple
-      ?['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계','고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고']
-      :['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계','추가수당','정산비율','정산후합계','고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고'];
+      ?[...baseHdr,...tailHdr]
+      :isMid?[...baseHdr,'추가수당','정산후합계',...tailHdr]
+      :[...baseHdr,'추가수당','정산비율','정산후합계',...tailHdr];
     const rows=[headers];
     gradeData.forEach(r=>{
       const c=calcActor(r);
-      if(isSimple){
-        rows.push([r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot,c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||'']);
-      }else{
-        rows.push([r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot,r.extra||0,r.ratio||1,c.settled,c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||'']);
-      }
+      const base=[r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot];
+      const tail=[c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||''];
+      if(isSimple) rows.push([...base,...tail]);
+      else if(isMid) rows.push([...base,r.extra||0,c.settled,...tail]);
+      else rows.push([...base,r.extra||0,r.ratio||1,c.settled,...tail]);
     });
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),`출연료_${grade}`);
   });
@@ -1074,6 +1096,8 @@ function renderFinal(){
     const rem=b.budget-act;
     const eps=projectInfo.episodes||1;
     const perEp=Math.round(b.budget/eps);
+    const pReal=b.budget?((act/b.budget)*100).toFixed(1):0;
+    const pColor=act>b.budget?'#c62828':act/b.budget>=0.8?'#e65100':'#2e7d32';
     bTotBudget+=b.budget; bTotActual+=act;
     bHtml+=`<tr>
       <td style="text-align:center;font-weight:700;color:#3949ab">${b.code}</td>
@@ -1082,46 +1106,58 @@ function renderFinal(){
       <td class="amt">${fmtNum(b.budget)}</td>
       <td class="amt ${act>b.budget?'over':''}">${fmtNum(act)}</td>
       <td class="amt ${rem<0?'over':''}">${fmtNum(Math.abs(rem))}${rem<0?'<span class="over-badge">초과</span>':''}</td>
+      <td style="text-align:center;font-weight:700;color:${pColor}">${pReal}%</td>
     </tr>`;
   });
   document.getElementById('budget-body').innerHTML=bHtml;
   const bRem=bTotBudget-bTotActual;
   const bTotPerEp=Math.round(bTotBudget/(projectInfo.episodes||1));
+  const bTotPct=bTotBudget?((bTotActual/bTotBudget)*100).toFixed(1):0;
   document.getElementById('budget-foot').innerHTML=`<tr style="font-weight:700;background:#e8eaf6">
     <td colspan="2" style="text-align:center;color:#1a237e">합 계</td>
     <td class="amt">${fmtNum(bTotPerEp)}</td>
     <td class="amt">${fmtNum(bTotBudget)}</td><td class="amt">${fmtNum(bTotActual)}</td>
-    <td class="amt ${bRem<0?'over':''}">${fmtNum(Math.abs(bRem))}${bRem<0?'<span class="over-badge">초과</span>':''}</td></tr>`;
+    <td class="amt ${bRem<0?'over':''}">${fmtNum(Math.abs(bRem))}${bRem<0?'<span class="over-badge">초과</span>':''}</td>
+    <td style="text-align:center;color:${bTotActual>bTotBudget?'#c62828':'#1a237e'}">${bTotPct}%</td></tr>`;
 
-  // 캐시플로우 테이블
-  let cfHtml='';let cumul=0;let cfTotals={a:0,p:0,b:0,c:0,t:0,tot:0};
-  const allRows=getAllTransactions(); // 필터 없이 전체
-  for(let m=1;m<=12;m++){
-    const mRows=allRows.filter(r=>r.month===m);
-    const aNet=mRows.filter(r=>r.source==='actor').reduce((s,r)=>s+r.net,0);
-    const pNet=mRows.filter(r=>r.source==='person').reduce((s,r)=>s+r.net,0);
-    const bNet=mRows.filter(r=>r.source==='biz').reduce((s,r)=>s+r.net,0);
-    const cNet=mRows.filter(r=>r.source==='card').reduce((s,r)=>s+r.net,0);
-    const tNet=mRows.filter(r=>r.source==='transfer').reduce((s,r)=>s+r.net,0);
-    const tot=aNet+pNet+bNet+cNet+tNet; cumul+=tot;
-    cfTotals.a+=aNet;cfTotals.p+=pNet;cfTotals.b+=bNet;cfTotals.c+=cNet;cfTotals.t+=tNet;cfTotals.tot+=tot;
-    const hasData=tot>0;
-    cfHtml+=`<tr ${!hasData?'style="opacity:.4"':''}>
-      <td>${m}월</td>
-      <td>${hasData&&aNet?fmtNum(aNet):'-'}</td>
-      <td>${hasData&&pNet?fmtNum(pNet):'-'}</td><td>${hasData&&bNet?fmtNum(bNet):'-'}</td>
-      <td>${hasData&&cNet?fmtNum(cNet):'-'}</td><td>${hasData&&tNet?fmtNum(tNet):'-'}</td>
-      <td style="font-weight:700">${hasData?fmtNum(tot):'-'}</td>
-      <td class="cumul">${hasData?fmtNum(cumul):'-'}</td>
-      <td style="color:${bTotBudget-cumul<0?'#c62828':'#2e7d32'};font-weight:700">${hasData?fmtNum(Math.abs(bTotBudget-cumul))+(bTotBudget-cumul<0?' ▲':' ▼'):'-'}</td>
+  // 예산코드별 월별 집행 현황
+  const cfAllRows=getAllTransactions();
+  const cfYear=projectInfo.year||2025;
+  const cfStartM=projectInfo.startMonth||1;
+  const cfOpM=projectInfo.opMonths||12;
+  // 운영 개월 수만큼 레이블·실제월 배열 생성
+  const monthLabels=Array.from({length:cfOpM},(_,i)=>{
+    const d=new Date(cfYear,cfStartM-1+i,1);
+    return `${String(d.getFullYear()).slice(-2)}.${String(d.getMonth()+1).padStart(2,'0')}`;
+  });
+  const monthNums=Array.from({length:cfOpM},(_,i)=>((cfStartM-1+i)%12)+1);
+  // thead 동적 갱신
+  const cfHead=document.getElementById('cashflow-head');
+  if(cfHead)cfHead.innerHTML=`<tr><th>코드</th><th style="text-align:left;min-width:90px">항목</th>${monthLabels.map(l=>`<th>${l}</th>`).join('')}<th>합계</th></tr>`;
+  let cfHtml='';
+  const monthTotals=new Array(cfOpM).fill(0);
+  let cfGrandTotal=0;
+  budgetCodes.forEach(b=>{
+    const monthAmts=Array.from({length:cfOpM},(_,i)=>
+      cfAllRows.filter(r=>+r.code===b.code&&+r.month===monthNums[i]).reduce((s,r)=>s+(+r.supply||0),0)
+    );
+    const codeTotal=monthAmts.reduce((s,v)=>s+v,0);
+    monthAmts.forEach((v,i)=>monthTotals[i]+=v);
+    cfGrandTotal+=codeTotal;
+    const hasData=codeTotal>0;
+    cfHtml+=`<tr ${!hasData?'style="opacity:.35"':''}>
+      <td>${b.code}</td>
+      <td style="text-align:left;font-family:inherit;background:#f5f7fa">${esc(b.name)}</td>
+      ${monthAmts.map(v=>`<td>${v?fmtNum(v):'-'}</td>`).join('')}
+      <td class="cf-total">${codeTotal?fmtNum(codeTotal):'-'}</td>
     </tr>`;
-  }
-  document.getElementById('cashflow-body').innerHTML=cfHtml;
-  document.getElementById('cashflow-foot').innerHTML=`<tr style="font-weight:700;background:#ede7f6">
-    <td>합 계</td><td>${fmtNum(cfTotals.a)}</td><td>${fmtNum(cfTotals.p)}</td><td>${fmtNum(cfTotals.b)}</td>
-    <td>${fmtNum(cfTotals.c)}</td><td>${fmtNum(cfTotals.t)}</td>
-    <td>${fmtNum(cfTotals.tot)}</td><td class="cumul">${fmtNum(cfTotals.tot)}</td>
-    <td>${fmtNum(Math.abs(bTotBudget-cfTotals.tot))}</td></tr>`;
+  });
+  document.getElementById('cashflow-body').innerHTML=cfHtml||`<tr><td colspan="${cfOpM+3}" style="text-align:center;color:#aaa;padding:20px">데이터가 없습니다.</td></tr>`;
+  document.getElementById('cashflow-foot').innerHTML=`<tr>
+    <td colspan="2" style="text-align:center;font-family:inherit">합 계</td>
+    ${monthTotals.map(v=>`<td>${v?fmtNum(v):'-'}</td>`).join('')}
+    <td>${fmtNum(cfGrandTotal)}</td>
+  </tr>`;
 }
 
 // ════════════════════════════════════════════
@@ -1235,38 +1271,63 @@ function delBiz(id){
 // ════════════════════════════════════════════
 // 카드 탭 (동적)
 // ════════════════════════════════════════════
-function buildCardTabs(){
-  const wrap=document.getElementById('card-tabs-wrap');if(!wrap)return;
-  const advCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='선급금');
+function buildCardTabs(){buildCorpTabs();buildAdvTabs();}
+function buildCorpTabs(){
+  const wrap=document.getElementById('corp-tabs-wrap');if(!wrap)return;
   const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
-  const grpStyle='display:flex;align-items:center;padding:0 8px;font-size:10px;font-weight:700;color:#888;white-space:nowrap;border-right:1px solid #e0e0e0;margin-right:2px;';
-  // 탭 버튼
-  let tabHtml=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
-  tabHtml+=`<div class="tab" id="ctab-settlement" onclick="switchCardTab('settlement')" style="border-bottom-color:transparent">정산서</div>`;
-  if(advCards.length){
-    tabHtml+=`<div style="${grpStyle}">선급금</div>`;
-    advCards.forEach(c=>{tabHtml+=`<div class="tab" id="ctab-${c.id}" onclick="switchCardTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
-  }
-  if(corpCards.length){
-    tabHtml+=`<div style="${grpStyle}">법인카드</div>`;
-    corpCards.forEach(c=>{tabHtml+=`<div class="tab" id="ctab-${c.id}" onclick="switchCardTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
-  }
-  tabHtml+=`<div class="tab" id="ctab-transfer-card" onclick="switchCardTab('transfer-card')" style="border-bottom-color:transparent">계좌이체</div>`;
-  tabHtml+=`</div></div>`;
-  // 각 카드 컨텐츠
-  appSettings.cards.forEach(c=>{
-    if(!cardData[c.id])cardData[c.id]={};
-    if(!selected[c.id])selected[c.id]=new Set();
-    if(!filters[c.id])filters[c.id]={};
-    tabHtml+=buildCardPanel(c,false);
+  let html=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
+  corpCards.forEach(c=>{html+=`<div class="tab" id="ctab-corp-${c.id}" onclick="switchCorpTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
+  html+=`</div></div>`;
+  corpCards.forEach(c=>{
+    if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};
+    html+=buildCardPanel(c,false).replace('<div id="cpanel-','<div data-corp-panel id="cpanel-');
   });
-  tabHtml+=buildTransferPanel();
-  tabHtml+=buildSettlementPanel();
-  wrap.innerHTML=tabHtml;
-  const initTab=currentCardTab||'settlement';
-  switchCardTab(initTab);
-  appSettings.cards.forEach(c=>refreshCardTable(c.id));
+  wrap.innerHTML=html;
+  // 기본 탭: 첫 번째 법인카드 사용자
+  const defTab=corpCards[0]?.id||'';
+  if(defTab)switchCorpTab(currentCorpTab&&currentCorpTab!=='corp-settlement'&&currentCorpTab!=='corp-transfer'?currentCorpTab:defTab);
+  corpCards.forEach(c=>refreshCardTable(c.id));
+}
+function buildAdvTabs(){
+  const wrap=document.getElementById('adv-tabs-wrap');if(!wrap)return;
+  const advCards=appSettings.cards.filter(c=>c.type==='선급금');
+  let html=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
+  html+=`<div class="tab" id="ctab-adv-settlement" onclick="switchAdvTab('adv-settlement')" style="border-bottom-color:transparent">정산서</div>`;
+  advCards.forEach(c=>{html+=`<div class="tab" id="ctab-adv-${c.id}" onclick="switchAdvTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
+  html+=`<div class="tab" id="ctab-adv-transfer" onclick="switchAdvTab('adv-transfer')" style="border-bottom-color:transparent">계좌이체</div>`;
+  html+=`</div></div>`;
+  if(!advCards.length){html+=`<div style="padding:40px;text-align:center;color:#aaa;font-size:13px">선급금 사용자가 없습니다.<br>설정 탭에서 선급금 사용자를 추가해 주세요.</div>`;}
+  advCards.forEach(c=>{
+    if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};
+    html+=buildCardPanel(c,false).replace('<div id="cpanel-','<div data-adv-panel id="cpanel-');
+  });
+  // 계좌이체 패널 (선급금 탭으로 이동)
+  html+=buildTransferPanel().replace('id="cpanel-transfer-card"','data-adv-panel id="cpanel-adv-transfer"');
+  // 선급금 정산서 패널
+  html+=buildAdvSettlementPanel();
+  wrap.innerHTML=html;
+  switchAdvTab(currentAdvTab||'adv-settlement');
+  advCards.forEach(c=>refreshCardTable(c.id));
   refreshTransferTable();
+}
+function switchCorpTab(cid){
+  currentCorpTab=cid;
+  const wrap=document.getElementById('corp-tabs-wrap');if(!wrap)return;
+  wrap.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.style.borderBottomColor='transparent';});
+  const bt=document.getElementById(`ctab-corp-${cid}`);if(bt){bt.classList.add('active');bt.style.borderBottomColor='#1a237e';}
+  wrap.querySelectorAll('[data-corp-panel]').forEach(p=>p.style.display='none');
+  const pn=document.getElementById(`cpanel-${cid}`);if(pn)pn.style.display='block';
+}
+function switchAdvTab(cid){
+  currentAdvTab=cid;
+  const wrap=document.getElementById('adv-tabs-wrap');if(!wrap)return;
+  wrap.querySelectorAll('.tab').forEach(t=>{t.classList.remove('active');t.style.borderBottomColor='transparent';});
+  const bt=document.getElementById(`ctab-adv-${cid}`);if(bt){bt.classList.add('active');bt.style.borderBottomColor='#1a237e';}
+  wrap.querySelectorAll('[data-adv-panel]').forEach(p=>p.style.display='none');
+  const panelId=cid==='adv-settlement'?'cpanel-adv-settlement':cid==='adv-transfer'?'cpanel-adv-transfer':`cpanel-${cid}`;
+  const pn=document.getElementById(panelId);if(pn)pn.style.display='block';
+  if(cid==='adv-transfer')refreshTransferTable();
+  if(cid==='adv-settlement')renderSettlementAdv();
 }
 function buildTransferPanel(){
   return `<div id="cpanel-transfer-card" style="display:none">
@@ -1344,64 +1405,104 @@ function buildCardPanel(card,active){
     </div>
   </div>`;
 }
-function buildSettlementPanel(){
+function buildSettlementPanel(){return buildAdvSettlementPanel();}// legacy compat
+function buildCorpSettlementPanel(){
   const si=appSettings.settlementInfo||{};
-  return `<div id="cpanel-settlement" style="display:none">
+  const inp='width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;text-align:right';
+  const lbl='display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px';
+  return `<div data-corp-panel id="cpanel-corp-settlement" style="display:none">
     <div class="card">
-      <div class="card-header" style="background:linear-gradient(135deg,#37474f,#546e7a)">📋 선급금 정산서
-        <button class="btn btn-excel btn-sm" onclick="exportSettlementAll()">📥 전체 엑셀</button>
+      <div class="card-header" style="background:linear-gradient(135deg,#1a237e,#283593)">법인카드 정산서
+        <button class="btn btn-excel btn-sm" onclick="exportSettlementAll('corp')">📥 엑셀</button>
       </div>
       <div class="card-body">
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
           <div>
-            <label style="display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px">전월 계좌잔액</label>
-            <input type="text" class="num-input" id="s-prev-bal" value="${fmtI(si.prevBalance||0)}"
-              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlement()"
-              onchange="saveSettlementInfo()" style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;text-align:right">
+            <label style="${lbl}">전월 법인카드 잔액</label>
+            <input type="text" class="num-input" id="s-corp-prev" value="${fmtI(si.corpPrevBalance||0)}"
+              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementCorp()"
+              onchange="saveSettlementInfo()" style="${inp}">
           </div>
           <div>
-            <label style="display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px">선급금 수령액</label>
-            <input type="text" class="num-input" id="s-advance" value="${fmtI(si.advance||0)}"
-              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlement()"
-              onchange="saveSettlementInfo()" style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;text-align:right">
+            <label style="${lbl}">법인카드 월 배정액</label>
+            <input type="text" class="num-input" id="s-corp-budget" value="${fmtI(si.corpBudget||0)}"
+              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementCorp()"
+              onchange="saveSettlementInfo()" style="${inp}">
           </div>
           <div>
-            <input id="s-other-label" value="${esc(si.otherLabel||'기타 수입')}" onchange="saveSettlementInfo()"
-              style="display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px;border:none;background:transparent;padding:0;width:100%;cursor:text">
-            <input type="text" class="num-input" id="s-other" value="${fmtI(si.otherAmt||0)}"
-              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlement()"
-              onchange="saveSettlementInfo()" style="width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;text-align:right">
+            <input id="s-corp-other-label" value="${esc(si.corpOtherLabel||'기타 수입')}" onchange="saveSettlementInfo()"
+              style="${lbl};border:none;background:transparent;padding:0;cursor:text">
+            <input type="text" class="num-input" id="s-corp-other" value="${fmtI(si.corpOtherAmt||0)}"
+              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementCorp()"
+              onchange="saveSettlementInfo()" style="${inp}">
           </div>
         </div>
-        <div id="settlement-table-wrap"></div>
+        <div id="settlement-table-wrap-corp"></div>
       </div>
     </div>
   </div>`;
 }
-function renderSettlement(){
-  const el=document.getElementById('settlement-table-wrap');if(!el)return;
+function buildAdvSettlementPanel(){
+  const si=appSettings.settlementInfo||{};
+  const inp='width:100%;padding:8px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;text-align:right';
+  const lbl='display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px';
+  return `<div data-adv-panel id="cpanel-adv-settlement" style="display:none">
+    <div class="card">
+      <div class="card-header" style="background:linear-gradient(135deg,#37474f,#546e7a)">선급금 정산서
+        <button class="btn btn-excel btn-sm" onclick="exportSettlementAll('adv')">📥 엑셀</button>
+      </div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+          <div>
+            <label style="${lbl}">전월 계좌잔액</label>
+            <input type="text" class="num-input" id="s-prev-bal" value="${fmtI(si.prevBalance||0)}"
+              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementAdv()"
+              onchange="saveSettlementInfo()" style="${inp}">
+          </div>
+          <div>
+            <label style="${lbl}">선급금 수령액</label>
+            <input type="text" class="num-input" id="s-advance" value="${fmtI(si.advance||0)}"
+              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementAdv()"
+              onchange="saveSettlementInfo()" style="${inp}">
+          </div>
+          <div>
+            <input id="s-other-label" value="${esc(si.otherLabel||'기타 수입')}" onchange="saveSettlementInfo()"
+              style="${lbl};border:none;background:transparent;padding:0;cursor:text">
+            <input type="text" class="num-input" id="s-other" value="${fmtI(si.otherAmt||0)}"
+              onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementAdv()"
+              onchange="saveSettlementInfo()" style="${inp}">
+          </div>
+        </div>
+        <div id="settlement-table-wrap-adv"></div>
+      </div>
+    </div>
+  </div>`;
+}
+function renderSettlement(){renderSettlementAdv();renderSettlementCorp();}
+function renderSettlementAdv(){
+  const el=document.getElementById('settlement-table-wrap-adv');if(!el)return;
   const si=appSettings.settlementInfo||{};
   const prevBal=parseI(document.getElementById('s-prev-bal')?.value??si.prevBalance??0);
   const advance=parseI(document.getElementById('s-advance')?.value??si.advance??0);
   const otherAmt=parseI(document.getElementById('s-other')?.value??si.otherAmt??0);
   const otherLabel=document.getElementById('s-other-label')?.value||si.otherLabel||'기타 수입';
   const totalIncome=prevBal+advance+otherAmt;
-  // 카드 데이터 중항목별 합산
-  const cardByMid={};
-  appSettings.cards.forEach(card=>{
+  // 선급금 카드만 합산
+  const advCardByMid={};
+  appSettings.cards.filter(c=>c.type==='선급금').forEach(card=>{
     Object.values(cardData[card.id]||{}).forEach(r=>{
-      const k=r.middle||'기타';cardByMid[k]=(cardByMid[k]||0)+(+r.amount||0);
+      const k=r.middle||'기타';advCardByMid[k]=(advCardByMid[k]||0)+(+r.amount||0);
     });
   });
-  // 계좌이체 항목별 합산
+  // 계좌이체 합산
   const tranByItem={};
   Object.values(transferData||{}).forEach(r=>{
     const k=r.item||'기타';tranByItem[k]=(tranByItem[k]||0)+calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
   });
-  const allKeys=[...new Set([...Object.keys(cardByMid),...Object.keys(tranByItem)])].sort();
+  const allKeys=[...new Set([...Object.keys(advCardByMid),...Object.keys(tranByItem)])].sort();
   let totCard=0,totTran=0;
   const rows=allKeys.map((k,i)=>{
-    const c=cardByMid[k]||0,t=tranByItem[k]||0;
+    const c=advCardByMid[k]||0,t=tranByItem[k]||0;
     totCard+=c;totTran+=t;
     return `<tr style="background:${i%2===0?'#fff':'#fafafa'}">
       <td style="padding:7px 10px">${esc(k)}</td>
@@ -1417,8 +1518,8 @@ function renderSettlement(){
     <div style="margin-bottom:8px;font-size:11px;color:#888;font-weight:600">수입: ${fmtNum(prevBal)} (전월잔액) + ${fmtNum(advance)} (선급금) + ${fmtNum(otherAmt)} (${esc(otherLabel)}) = <strong style="color:#1a237e">${fmtNum(totalIncome)}</strong></div>
     <div class="tbl-wrap">
     <table class="data-table" style="min-width:500px">
-      <thead><tr><th>항목 (중항목/품목)</th><th>계좌이체</th><th>법인카드</th><th>소계</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="4" class="empty-state">거래 내역이 없습니다.</td></tr>'}</tbody>
+      <thead><tr><th>항목 (중항목)</th><th>계좌이체</th><th>선급금카드</th><th>소계</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="4" class="empty-state">선급금 거래 내역이 없습니다.</td></tr>'}</tbody>
       <tfoot>
         <tr class="total-r"><td>지출 합계</td><td class="ac">${fmtNum(totTran)}</td><td class="ac">${fmtNum(totCard)}</td><td class="ac">${fmtNum(totExp)}</td></tr>
         <tr style="background:#e8f5e9"><td colspan="3" style="font-weight:700;padding:9px 10px;color:#2e7d32">계좌 잔액 (수입 - 지출)</td>
@@ -1426,15 +1527,59 @@ function renderSettlement(){
       </tfoot>
     </table></div>`;
 }
+function renderSettlementCorp(){
+  const el=document.getElementById('settlement-table-wrap-corp');if(!el)return;
+  const si=appSettings.settlementInfo||{};
+  const corpPrev=parseI(document.getElementById('s-corp-prev')?.value??si.corpPrevBalance??0);
+  const corpBudget=parseI(document.getElementById('s-corp-budget')?.value??si.corpBudget??0);
+  const corpOther=parseI(document.getElementById('s-corp-other')?.value??si.corpOtherAmt??0);
+  const corpOtherLabel=document.getElementById('s-corp-other-label')?.value||si.corpOtherLabel||'기타 수입';
+  const totalIncome=corpPrev+corpBudget+corpOther;
+  // 법인카드만 합산
+  const corpByMid={};
+  appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드').forEach(card=>{
+    Object.values(cardData[card.id]||{}).forEach(r=>{
+      const k=r.middle||'기타';corpByMid[k]=(corpByMid[k]||0)+(+r.amount||0);
+    });
+  });
+  const allKeys=Object.keys(corpByMid).sort();
+  let totCard=0;
+  const rows=allKeys.map((k,i)=>{
+    const c=corpByMid[k]||0;totCard+=c;
+    return `<tr style="background:${i%2===0?'#fff':'#fafafa'}">
+      <td style="padding:7px 10px">${esc(k)}</td>
+      <td class="ac" style="padding:7px 10px;font-weight:600;color:#1a237e">${fmtNum(c)}</td>
+    </tr>`;
+  }).join('');
+  const bal=totalIncome-totCard;
+  const balColor=bal>=0?'#2e7d32':'#c62828';
+  el.innerHTML=`
+    <div style="margin-bottom:8px;font-size:11px;color:#888;font-weight:600">수입: ${fmtNum(corpPrev)} (전월잔액) + ${fmtNum(corpBudget)} (월 배정액) + ${fmtNum(corpOther)} (${esc(corpOtherLabel)}) = <strong style="color:#1a237e">${fmtNum(totalIncome)}</strong></div>
+    <div class="tbl-wrap">
+    <table class="data-table" style="min-width:400px">
+      <thead><tr><th>항목 (중항목)</th><th>법인카드 지출</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="2" class="empty-state">법인카드 거래 내역이 없습니다.</td></tr>'}</tbody>
+      <tfoot>
+        <tr class="total-r"><td>지출 합계</td><td class="ac">${fmtNum(totCard)}</td></tr>
+        <tr style="background:#e8eaf6"><td style="font-weight:700;padding:9px 10px;color:#1a237e">잔액 (배정액 - 지출)</td>
+          <td class="ac" style="font-size:15px;font-weight:700;color:${balColor};padding:9px 10px">${fmtNum(bal)}</td></tr>
+      </tfoot>
+    </table></div>`;
+}
 function saveSettlementInfo(){
   if(!appSettings.settlementInfo)appSettings.settlementInfo={};
-  appSettings.settlementInfo.prevBalance=parseI(document.getElementById('s-prev-bal')?.value)||0;
-  appSettings.settlementInfo.advance=parseI(document.getElementById('s-advance')?.value)||0;
-  appSettings.settlementInfo.otherAmt=parseI(document.getElementById('s-other')?.value)||0;
-  appSettings.settlementInfo.otherLabel=document.getElementById('s-other-label')?.value||'기타 수입';
-  persistSettings();renderSettlement();
+  const si=appSettings.settlementInfo;
+  si.prevBalance=parseI(document.getElementById('s-prev-bal')?.value)||0;
+  si.advance=parseI(document.getElementById('s-advance')?.value)||0;
+  si.otherAmt=parseI(document.getElementById('s-other')?.value)||0;
+  si.otherLabel=document.getElementById('s-other-label')?.value||'기타 수입';
+  si.corpPrevBalance=parseI(document.getElementById('s-corp-prev')?.value)||0;
+  si.corpBudget=parseI(document.getElementById('s-corp-budget')?.value)||0;
+  si.corpOtherAmt=parseI(document.getElementById('s-corp-other')?.value)||0;
+  si.corpOtherLabel=document.getElementById('s-corp-other-label')?.value||'기타 수입';
+  persistSettings();
 }
-function exportSettlementAll(){
+function exportSettlementAll(type){
   const wb=XLSX.utils.book_new();
   const proj=projectInfo.name||'드라마';
   const sTitle=es2(EC.NAVY,EC.WHITE,true,13,'center');
@@ -1525,7 +1670,7 @@ function exportSettlementAll(){
   const fname=`선급금정산_${proj}_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb,fname);showToast(`📥 ${fname} 다운로드 완료!`);
 }
-let currentCardTab=null;
+let currentCardTab=null, currentCorpTab=null, currentAdvTab=null;
 function switchCardTab(cid){
   currentCardTab=cid;
   document.querySelectorAll('[id^="ctab-"]').forEach(t=>{t.classList.remove('active');t.style.borderBottomColor='transparent';});
@@ -1533,7 +1678,7 @@ function switchCardTab(cid){
   const bt=document.getElementById(`ctab-${cid}`);if(bt){bt.classList.add('active');bt.style.borderBottomColor='#1a237e';}
   const pn=document.getElementById(`cpanel-${cid}`);if(pn)pn.style.display='block';
   if(cid==='transfer-card')refreshTransferTable();
-  if(cid==='settlement')renderSettlement();
+  if(cid==='settlement'){renderSettlementAdv();}
 }
 function refreshCardTable(cid){
   const tbody=document.getElementById(`body-${cid}`);if(!tbody)return;
@@ -1764,7 +1909,7 @@ function saveCardUsers(){
     c.person=document.getElementById(`cu-person-${i}`)?.value||c.person;
     // type은 각 섹션(선급금/법인카드)에서 추가되므로 기존 type 유지
   });
-  persistSettings();buildCardTabs();showToast('✅ 카드 사용자가 저장되었습니다.');
+  persistSettings();buildCorpTabs();buildAdvTabs();showToast('✅ 카드 사용자가 저장되었습니다.');
 }
 function renderTagSettings(){
   const render=(key,elId)=>{const el=document.getElementById(elId);if(!el)return;el.innerHTML=(appSettings[key]||[]).map(v=>`<span class="tag">${esc(v)}<button onclick="removeTag('${key}','${esc(v)}','${elId}')">×</button></span>`).join('');};
@@ -1842,13 +1987,17 @@ function exportSel(tid){
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'업체지급');
   }else if(tid==='actor'){
     const isSimple=(currentActorGrade==='주연'||currentActorGrade==='조연');
-    const headers=isSimple
-      ?['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계','고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고']
-      :['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계','추가수당','정산비율','정산후합계','고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고'];
+    const isMid=(currentActorGrade==='단역'||currentActorGrade==='무술');
+    const baseHdr=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
+    const tailHdr=['고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고'];
+    const headers=isSimple?[...baseHdr,...tailHdr]:isMid?[...baseHdr,'추가수당','정산후합계',...tailHdr]:[...baseHdr,'추가수당','정산비율','정산후합계',...tailHdr];
     const rows=[headers];
     sel.forEach(id=>{const r=actorData[id];if(r){const c=calcActor(r);
-      if(isSimple){rows.push([r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot,c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||'']);}
-      else{rows.push([r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot,r.extra||0,r.ratio||1,c.settled,c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||'']);}
+      const base=[r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot];
+      const tail=[c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||''];
+      if(isSimple){rows.push([...base,...tail]);}
+      else if(isMid){rows.push([...base,r.extra||0,c.settled,...tail]);}
+      else{rows.push([...base,r.extra||0,r.ratio||1,c.settled,...tail]);}
     }});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),`출연료_${currentActorGrade}`);
   }else if(tid==='transfer'){
