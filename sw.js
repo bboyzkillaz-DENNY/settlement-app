@@ -18,8 +18,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  if (e.request.url.includes('firebaseio.com') ||
-      e.request.url.includes('firebase') ||
+  const url = e.request.url;
+  if (!url.startsWith('http') ||
+      url.includes('firebaseio.com') ||
+      url.includes('firebase') ||
       e.request.method !== 'GET') return;
   e.respondWith(
     caches.match(e.request).then(cached => {
