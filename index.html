@@ -464,66 +464,6 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     <div class="card-body">
       <p style="font-size:12px;color:#888;margin-bottom:10px">각 예산 코드의 총 예산 금액을 설정하세요 (원 단위)</p>
       <div id="budget-edit-list"></div>
-      <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="saveBudget()">✓ 저장</button>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header">📑 월정산 설정
-      <span style="display:flex;align-items:center;gap:6px">
-        <input id="new-monthly-section" placeholder="구분명 입력" style="height:28px;padding:0 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;width:100px">
-        <button class="btn btn-add btn-sm" onclick="addMonthlySection()">+ 구분 추가</button>
-      </span>
-    </div>
-    <div class="card-body">
-      <div class="settings-section">
-        <h3>개인 구분</h3>
-        <div class="tag-list" id="tags-pcat"></div>
-        <div class="tag-input-row"><input id="new-pcat" placeholder="예) 제작용역" onkeydown="if(event.key==='Enter')addTag('personCats','new-pcat','tags-pcat')"><button class="btn btn-add btn-sm" onclick="addTag('personCats','new-pcat','tags-pcat')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>업체 구분</h3>
-        <div class="tag-list" id="tags-bcat"></div>
-        <div class="tag-input-row"><input id="new-bcat" placeholder="예) 장소사용료" onkeydown="if(event.key==='Enter')addTag('bizCats','new-bcat','tags-bcat')"><button class="btn btn-add btn-sm" onclick="addTag('bizCats','new-bcat','tags-bcat')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>은행 목록</h3>
-        <div class="tag-list" id="tags-bank"></div>
-        <div class="tag-input-row"><input id="new-bank" placeholder="예) 신한은행" onkeydown="if(event.key==='Enter')addTag('banks','new-bank','tags-bank')"><button class="btn btn-add btn-sm" onclick="addTag('banks','new-bank','tags-bank')">+</button></div>
-      </div>
-      <div id="custom-monthly-sections"></div>
-      <button class="btn btn-primary btn-sm" style="margin-top:4px" onclick="saveTagSettings()">✓ 저장</button>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header">🎭 출연료 설정
-      <span style="display:flex;align-items:center;gap:6px">
-        <input id="new-actor-section" placeholder="구분명 입력" style="height:28px;padding:0 8px;border:1px solid #ccc;border-radius:6px;font-size:12px;width:100px">
-        <button class="btn btn-add btn-sm" onclick="addActorSection()">+ 구분 추가</button>
-      </span>
-    </div>
-    <div class="card-body">
-      <div class="settings-section">
-        <h3>주연 배역 목록</h3>
-        <div class="tag-list" id="tags-a-주연"></div>
-        <div class="tag-input-row"><input id="new-a-주연" placeholder="예) 주인공" onkeydown="if(event.key==='Enter')addTag('actorRoles_주연','new-a-주연','tags-a-주연')"><button class="btn btn-add btn-sm" onclick="addTag('actorRoles_주연','new-a-주연','tags-a-주연')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>조연 배역 목록</h3>
-        <div class="tag-list" id="tags-a-조연"></div>
-        <div class="tag-input-row"><input id="new-a-조연" placeholder="예) 형사" onkeydown="if(event.key==='Enter')addTag('actorRoles_조연','new-a-조연','tags-a-조연')"><button class="btn btn-add btn-sm" onclick="addTag('actorRoles_조연','new-a-조연','tags-a-조연')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>단역 배역 목록</h3>
-        <div class="tag-list" id="tags-a-단역"></div>
-        <div class="tag-input-row"><input id="new-a-단역" placeholder="예) 행인" onkeydown="if(event.key==='Enter')addTag('actorRoles_단역','new-a-단역','tags-a-단역')"><button class="btn btn-add btn-sm" onclick="addTag('actorRoles_단역','new-a-단역','tags-a-단역')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>무술 배역 목록</h3>
-        <div class="tag-list" id="tags-a-무술"></div>
-        <div class="tag-input-row"><input id="new-a-무술" placeholder="예) 무술지도" onkeydown="if(event.key==='Enter')addTag('actorRoles_무술','new-a-무술','tags-a-무술')"><button class="btn btn-add btn-sm" onclick="addTag('actorRoles_무술','new-a-무술','tags-a-무술')">+</button></div>
-      </div>
-      <div id="custom-actor-sections"></div>
-      <button class="btn btn-primary btn-sm" style="margin-top:4px" onclick="saveTagSettings()">✓ 저장</button>
     </div>
   </div>
   <div class="card">
@@ -532,17 +472,6 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     </div>
     <div class="card-body">
       <div id="card-user-list-선급금"></div>
-      <div class="settings-section" style="margin-top:16px">
-        <h3>중항목 (선급금)</h3>
-        <div class="tag-list" id="tags-amid"></div>
-        <div class="tag-input-row"><input id="new-amid" placeholder="예) 선급금집행" onkeydown="if(event.key==='Enter')addTag('advanceMids','new-amid','tags-amid')"><button class="btn btn-add btn-sm" onclick="addTag('advanceMids','new-amid','tags-amid')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>소항목 (선급금)</h3>
-        <div class="tag-list" id="tags-amin"></div>
-        <div class="tag-input-row"><input id="new-amin" placeholder="예) 현금지급" onkeydown="if(event.key==='Enter')addTag('advanceMinors','new-amin','tags-amin')"><button class="btn btn-add btn-sm" onclick="addTag('advanceMinors','new-amin','tags-amin')">+</button></div>
-      </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="saveCardUsers();saveTagSettings()">✓ 저장</button>
     </div>
   </div>
   <div class="card">
@@ -551,17 +480,6 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     </div>
     <div class="card-body">
       <div id="card-user-list-법인카드"></div>
-      <div class="settings-section" style="margin-top:16px">
-        <h3>중항목 (법인카드)</h3>
-        <div class="tag-list" id="tags-cmid"></div>
-        <div class="tag-input-row"><input id="new-cmid" placeholder="예) 제작진행비" onkeydown="if(event.key==='Enter')addTag('cardMids','new-cmid','tags-cmid')"><button class="btn btn-add btn-sm" onclick="addTag('cardMids','new-cmid','tags-cmid')">+</button></div>
-      </div>
-      <div class="settings-section">
-        <h3>소항목 (법인카드)</h3>
-        <div class="tag-list" id="tags-cmin"></div>
-        <div class="tag-input-row"><input id="new-cmin" placeholder="예) 식대" onkeydown="if(event.key==='Enter')addTag('cardMinors','new-cmin','tags-cmin')"><button class="btn btn-add btn-sm" onclick="addTag('cardMinors','new-cmin','tags-cmin')">+</button></div>
-      </div>
-      <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="saveCardUsers();saveTagSettings()">✓ 저장</button>
     </div>
   </div>
 </div>
@@ -932,17 +850,12 @@ function renderActorTable(){
     if(f.type&&r.type!==f.type)return false;
     return true;
   });
-  const roles=(appSettings[`actorRoles_${currentActorGrade}`]||[]);
-  const roleOpts=roles.length?roles.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join(''):`<option value="">-</option>`;
   const colCount=isSimple?22:24;
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="${colCount}" class="empty-state">${currentActorGrade} 출연료 정산 내역이 없습니다.</td></tr>`;updateActorTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const c=calcActor(r);
     const sel=(selected.actor||new Set()).has(id);
-    // 배역명: 단역은 직접 입력, 나머지는 select
-    const roleCel=currentActorGrade==='단역'
-      ? `<td><input value="${esc(r.role||'')}" onchange="updA('${id}','role',this.value)" style="min-width:70px" placeholder="배역명 입력"></td>`
-      : `<td><select onchange="updA('${id}','role',this.value)" style="min-width:70px"><option value="${esc(r.role||'')}" selected>${esc(r.role||'선택')}</option>${roleOpts}</select></td>`;
+    const roleCel=`<td><input value="${esc(r.role||'')}" onchange="updA('${id}','role',this.value)" style="min-width:70px" placeholder="배역명 입력"></td>`;
     let row=`<tr id="ra-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('actor','${id}',this.checked)"></td>
       <td><select onchange="updA('${id}','month',+this.value)" style="min-width:62px">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
@@ -1174,10 +1087,10 @@ function renderPersonTable(){
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('person','${id}',this.checked)"></td>
       <td><select onchange="updP('${id}','month',+this.value)">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
       <td class="code-cell"><select onchange="updP('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:120px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
-      <td><select onchange="updP('${id}','category',this.value)">${appSettings.personCats.map(c=>`<option ${r.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select></td>
+      <td><input value="${esc(r.category)}" onchange="updP('${id}','category',this.value)" placeholder="세부항목" style="min-width:75px"></td>
       <td><input value="${esc(r.name)}" onchange="updP('${id}','name',this.value)" style="min-width:55px"></td>
       <td><input value="${esc(r.rrn)}" onchange="updP('${id}','rrn',this.value)" placeholder="000000-*" style="min-width:105px"></td>
-      <td><select onchange="updP('${id}','bank',this.value)">${appSettings.banks.map(b=>`<option ${r.bank===b?'selected':''}>${esc(b)}</option>`).join('')}</select></td>
+      <td><input value="${esc(r.bank)}" onchange="updP('${id}','bank',this.value)" placeholder="은행명" style="min-width:70px"></td>
       <td><input value="${esc(r.account)}" onchange="updP('${id}','account',this.value)" style="min-width:105px"></td>
       <td><input value="${esc(r.holder)}" onchange="updP('${id}','holder',this.value)" style="min-width:55px"></td>
       <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
@@ -1196,7 +1109,7 @@ function updatePersonTotals(){
   setText('pt-sup',fmtNum(s.sup));setText('pt-tax',fmtNum(s.tax));setText('pt-ins',fmtNum(s.ins));setText('pt-net',fmtNum(s.net));
 }
 function addPersonRow(){
-  const row={month:new Date().getMonth()+1,code:budgetCodes[0]?.code||100,category:appSettings.personCats[0]||'제작용역',name:'',rrn:'',bank:appSettings.banks[0]||'신한은행',account:'',holder:'',supply:0,notes:''};
+  const row={month:new Date().getMonth()+1,code:budgetCodes[0]?.code||100,category:'',name:'',rrn:'',bank:'',account:'',holder:'',supply:0,notes:''};
   if(isFirebase)window.__fbi.push(window.__fbi.ref(`${DB}/persons`),row);
   else{const id='p'+Date.now();personData[id]=row;renderPersonTable();renderFinal();}
 }
@@ -1227,10 +1140,10 @@ function renderBizTable(){
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('biz','${id}',this.checked)"></td>
       <td><select onchange="updB('${id}','month',+this.value)">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
       <td class="code-cell"><select onchange="updB('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:120px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
-      <td><select onchange="updB('${id}','category',this.value)">${appSettings.bizCats.map(c=>`<option ${r.category===c?'selected':''}>${esc(c)}</option>`).join('')}</select></td>
+      <td><input value="${esc(r.category)}" onchange="updB('${id}','category',this.value)" placeholder="세부항목" style="min-width:75px"></td>
       <td><input value="${esc(r.name)}" onchange="updB('${id}','name',this.value)" style="min-width:90px"></td>
       <td><input value="${esc(r.bizNum)}" onchange="updB('${id}','bizNum',this.value)" placeholder="000-00-00000" style="min-width:95px"></td>
-      <td><select onchange="updB('${id}','bank',this.value)">${appSettings.banks.map(b=>`<option ${r.bank===b?'selected':''}>${esc(b)}</option>`).join('')}</select></td>
+      <td><input value="${esc(r.bank)}" onchange="updB('${id}','bank',this.value)" placeholder="은행명" style="min-width:70px"></td>
       <td><input value="${esc(r.account)}" onchange="updB('${id}','account',this.value)" style="min-width:105px"></td>
       <td><input value="${esc(r.holder)}" onchange="updB('${id}','holder',this.value)" style="min-width:55px"></td>
       <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updB('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
@@ -1251,7 +1164,7 @@ function updateBizTotals(){
   setText('bt-sup',fmtNum(s.sup));setText('bt-vat',fmtNum(s.vat));setText('bt-tax',fmtNum(s.tax));setText('bt-net',fmtNum(s.net));
 }
 function addBizRow(){
-  const row={month:new Date().getMonth()+1,code:budgetCodes[0]?.code||100,category:appSettings.bizCats[0]||'장소사용료',name:'',bizNum:'',bank:appSettings.banks[0]||'신한은행',account:'',holder:'',supply:0,vat:0,tax:0,notes:''};
+  const row={month:new Date().getMonth()+1,code:budgetCodes[0]?.code||100,category:'',name:'',bizNum:'',bank:'',account:'',holder:'',supply:0,vat:0,tax:0,notes:''};
   if(isFirebase)window.__fbi.push(window.__fbi.ref(`${DB}/businesses`),row);
   else{const id='b'+Date.now();bizData[id]=row;renderBizTable();renderFinal();}
 }
@@ -1375,7 +1288,7 @@ function buildCardPanel(card,active){
     <div class="card">
       <div class="card-header">💳 ${esc(card.cardNum)} (${esc(card.person)})
         <div style="display:flex;gap:6px">
-          <button class="btn btn-add btn-sm" onclick="openCardModal('${cid}')">+ 추가</button>
+          <button class="btn btn-add btn-sm" onclick="addCardRow('${cid}')">+ 추가</button>
           <button class="btn btn-excel btn-sm" onclick="exportCardAll('${cid}')">📥 엑셀</button>
         </div>
       </div>
@@ -1694,7 +1607,7 @@ function refreshCardTable(cid){
       <td><input value="${esc(r.minor)}" onchange="updC('${cid}','${id}','minor',this.value)" style="min-width:60px"></td>
       <td><input type="date" value="${r.date||''}" onchange="updC('${cid}','${id}','date',this.value)" style="min-width:110px"></td>
       <td><input value="${esc(r.detail)}" onchange="updC('${cid}','${id}','detail',this.value)" style="min-width:120px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.amount)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updC('${cid}','${id}','amount',parseI(this.value))" style="text-align:right;min-width:100px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.amount)?fmtI(r.amount):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updC('${cid}','${id}','amount',parseI(this.value))" style="text-align:right;min-width:100px"></td>
       <td><input value="${esc(r.proof)}" onchange="updC('${cid}','${id}','proof',this.value)" style="min-width:75px"></td>
       <td><input value="${esc(r.vendor)}" onchange="updC('${cid}','${id}','vendor',this.value)" style="min-width:90px"></td>
       <td><button class="btn btn-danger btn-sm" onclick="delCard('${cid}','${id}')">✕</button></td>
@@ -1718,27 +1631,17 @@ function delCard(cid,id){
   delete cardData[cid][id];if(selected[cid])selected[cid].delete(id);
   dbRemove(`cards/${cid}/${id}`);refreshCardTable(cid);renderFinal();
 }
-function openCardModal(cid){
-  currentCardModal=cid;
-  const card=appSettings.cards.find(c=>c.id===cid);
-  document.getElementById('card-modal-title').textContent=`지출 추가 — ${card?card.person:cid}`;
+function addCardRow(cid){
   const d=new Date();
-  document.getElementById('m-date').value=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  document.getElementById('m-month').value=d.getMonth()+1;
-  updateModalCodeSelect();updateModalMidSelects(card?.type);
-  document.getElementById('card-modal').classList.add('show');
-  setTimeout(()=>document.getElementById('m-detail').focus(),200);
+  const card=appSettings.cards.find(c=>c.id===cid);
+  const row={month:d.getMonth()+1,code:budgetCodes[0]?.code||100,middle:'',minor:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,detail:'',amount:0,proof:'',vendor:''};
+  if(isFirebase)window.__fbi.push(window.__fbi.ref(`${DB}/cards/${cid}`),row);
+  else{const id='r'+Date.now();if(!cardData[cid])cardData[cid]={};cardData[cid][id]=row;refreshCardTable(cid);renderFinal();}
 }
-function closeCardModal(){document.getElementById('card-modal').classList.remove('show');currentCardModal=null;}
-function saveCardModal(){
-  if(!currentCardModal)return;
-  const row={month:+_v('m-month'),code:+_v('m-code'),middle:_v('m-mid'),minor:_v('m-minor'),date:_v('m-date'),detail:_v('m-detail'),amount:parseI(document.getElementById('m-amount').value),proof:_v('m-proof'),vendor:_v('m-vendor')};
-  if(isFirebase)window.__fbi.push(window.__fbi.ref(`${DB}/cards/${currentCardModal}`),row);
-  else{const id='r'+Date.now();if(!cardData[currentCardModal])cardData[currentCardModal]={};cardData[currentCardModal][id]=row;refreshCardTable(currentCardModal);renderFinal();}
-  closeCardModal();showToast('✅ 저장되었습니다.');
-  ['m-detail','m-amount','m-vendor'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
-}
-document.getElementById('card-modal').addEventListener('click',e=>{if(e.target===document.getElementById('card-modal'))closeCardModal();});
+function openCardModal(cid){addCardRow(cid);}// legacy compat
+function closeCardModal(){}
+function saveCardModal(){}
+document.getElementById('card-modal')?.addEventListener('click',e=>{if(e.target===document.getElementById('card-modal'))closeCardModal();});
 
 // ════════════════════════════════════════════
 // 계좌이체
@@ -1758,10 +1661,10 @@ function refreshTransferTable(){
       <td><input value="${esc(r.detail)}" onchange="updT('${id}','detail',this.value)" style="min-width:100px"></td>
       <td><input value="${esc(r.vendor)}" onchange="updT('${id}','vendor',this.value)" style="min-width:90px"></td>
       <td><input type="date" value="${r.date||''}" onchange="updT('${id}','date',this.value)" style="min-width:110px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updT('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.vat)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updT('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.tax)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updT('${id}','tax',parseI(this.value))" style="text-align:right;min-width:85px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.insurance)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updT('${id}','insurance',parseI(this.value))" style="text-align:right;min-width:85px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.supply)?fmtI(r.supply):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.vat)?fmtI(r.vat):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.tax)?fmtI(r.tax):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','tax',parseI(this.value))" style="text-align:right;min-width:85px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.insurance)?fmtI(r.insurance):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','insurance',parseI(this.value))" style="text-align:right;min-width:85px"></td>
       <td class="auto-c">${fmtNum(net)}</td>
       <td><input value="${esc(r.proof)}" onchange="updT('${id}','proof',this.value)" style="min-width:75px"></td>
       <td><input value="${esc(r.notes)}" onchange="updT('${id}','notes',this.value)" style="min-width:75px"></td>
@@ -1857,31 +1760,30 @@ function renderBudgetEditList(){
   document.getElementById('budget-edit-list').innerHTML=budgetCodes.map((b,i)=>`
     <div class="budget-edit-row">
       <div class="code-lbl">${b.code}</div>
-      <input value="${esc(b.name)}" onchange="budgetCodes[${i}].name=this.value" placeholder="항목명">
-      <input type="text" class="num-input" value="${fmtI(b.budget)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="budgetCodes[${i}].budget=parseI(this.value)" style="text-align:right">
+      <input value="${esc(b.name)}" onchange="budgetCodes[${i}].name=this.value;saveBudget()" placeholder="항목명">
+      <input type="text" class="num-input" value="${fmtI(b.budget)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="budgetCodes[${i}].budget=parseI(this.value);saveBudget()" style="text-align:right">
       <button class="btn btn-danger btn-sm" onclick="removeBudgetCode(${i})">✕</button>
     </div>`).join('');
 }
 function addBudgetCode(){
   const maxCode=budgetCodes.reduce((m,b)=>Math.max(m,b.code),0);
   budgetCodes.push({code:maxCode+100,name:'신규항목',budget:0});
-  renderBudgetEditList();
+  renderBudgetEditList();saveBudget();
 }
-function removeBudgetCode(i){budgetCodes.splice(i,1);renderBudgetEditList();}
+function removeBudgetCode(i){budgetCodes.splice(i,1);renderBudgetEditList();saveBudget();}
 function saveBudget(){
   localStorage.setItem('integrated_budget',JSON.stringify(budgetCodes));
   dbSet('budget',budgetCodes);
   renderFinal();renderPersonTable();renderBizTable();refreshCardTable(currentCardTab||appSettings.cards[0]?.id||'');refreshTransferTable();
-  showToast('✅ 예산 설정이 저장되었습니다.');
 }
 function renderCardUserList(){
   const buildRow=(c,i)=>`
     <div class="card-user-row">
       <div class="row-h"><span>사용자 ${i+1}</span><button class="btn btn-danger btn-sm" onclick="removeCardUser(${i})">삭제</button></div>
       <div class="cu-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}"></div>
-        <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}"></div>
-        <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}"></div>
+        <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}" onchange="saveCardUsers()"></div>
       </div>
     </div>`;
   const advEl=document.getElementById('card-user-list-선급금');
@@ -1894,22 +1796,21 @@ function addCardUser(type){
   const newId='card'+Date.now().toString().slice(-8);
   appSettings.cards.push({id:newId,cardNum:'',person:'새 사용자',tabLabel:'신규',type:t});
   cardData[newId]={};selected[newId]=new Set();filters[newId]={};
-  renderCardUserList();showToast('저장 버튼을 눌러 확정하세요.');
+  renderCardUserList();saveCardUsers();
 }
 function removeCardUser(i){
   if(appSettings.cards.length<=1){showToast('최소 1명 필요합니다.');return;}
   if(!confirm('삭제하시겠습니까?'))return;
   appSettings.cards.splice(i,1);
-  renderCardUserList();
+  renderCardUserList();saveCardUsers();
 }
 function saveCardUsers(){
   appSettings.cards.forEach((c,i)=>{
     c.tabLabel=document.getElementById(`cu-label-${i}`)?.value||c.tabLabel;
     c.cardNum=document.getElementById(`cu-num-${i}`)?.value||c.cardNum;
     c.person=document.getElementById(`cu-person-${i}`)?.value||c.person;
-    // type은 각 섹션(선급금/법인카드)에서 추가되므로 기존 type 유지
   });
-  persistSettings();buildCorpTabs();buildAdvTabs();showToast('✅ 카드 사용자가 저장되었습니다.');
+  persistSettings();buildCorpTabs();buildAdvTabs();
 }
 function renderTagSettings(){
   const render=(key,elId)=>{const el=document.getElementById(elId);if(!el)return;el.innerHTML=(appSettings[key]||[]).map(v=>`<span class="tag">${esc(v)}<button onclick="removeTag('${key}','${esc(v)}','${elId}')">×</button></span>`).join('');};
@@ -1965,9 +1866,9 @@ function removeCustomSection(type,key){
   delete appSettings[key];
   renderCustomSections();
 }
-function addTag(key,inputId,elId){const input=document.getElementById(inputId);const val=input.value.trim();if(!val)return;if(!(appSettings[key]||[]).includes(val)){if(!appSettings[key])appSettings[key]=[];appSettings[key].push(val);}input.value='';renderTagSettings();}
-function removeTag(key,val,elId){appSettings[key]=(appSettings[key]||[]).filter(v=>v!==val);renderTagSettings();}
-function saveTagSettings(){persistSettings();updateModalMidSelects();showToast('✅ 항목 설정이 저장되었습니다.');}
+function addTag(key,inputId,elId){const input=document.getElementById(inputId);const val=input.value.trim();if(!val)return;if(!(appSettings[key]||[]).includes(val)){if(!appSettings[key])appSettings[key]=[];appSettings[key].push(val);}input.value='';renderTagSettings();saveTagSettings();}
+function removeTag(key,val,elId){appSettings[key]=(appSettings[key]||[]).filter(v=>v!==val);renderTagSettings();saveTagSettings();}
+function saveTagSettings(){persistSettings();updateModalMidSelects();}
 function persistSettings(){localStorage.setItem('integrated_settings',JSON.stringify(appSettings));dbSet('settings',appSettings);}
 
 // ════════════════════════════════════════════
