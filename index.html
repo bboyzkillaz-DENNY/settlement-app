@@ -2288,15 +2288,42 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pwaPrompt=e
 function installPWA(){if(pwaPrompt){pwaPrompt.prompt();pwaPrompt.userChoice.then(()=>{pwaPrompt=null;document.getElementById('inst-banner').classList.remove('show');});}}
 
 // ════════════════════════════════════════════
-// 시작
+// 시작 — load 이벤트 후 실행 (Firebase 모듈 완료 보장)
 // ════════════════════════════════════════════
-(function start(){
-  if(window.__firebaseReady){isFirebase=true;document.getElementById('setup-screen').style.display='none';appInit();return;}
+function _doStart(){
+  if(window.__firebaseReady){
+    isFirebase=true;
+    document.getElementById('setup-screen').style.display='none';
+    setStatus('online','Firebase 실시간 연결됨');
+    appInit();
+    return;
+  }
   const saved=localStorage.getItem('fb_cfg_integrated')||localStorage.getItem('fb_config');
-  if(saved){try{const c=JSON.parse(saved);if(c.apiKey&&c.databaseURL){document.getElementById('setup-screen').style.display='none';appInit();return;}}catch(e){}}
+  if(saved){
+    try{
+      const c=JSON.parse(saved);
+      if(c.apiKey&&c.databaseURL){
+        // Firebase 모듈이 아직 초기화 중일 수 있으므로 짧게 대기
+        setTimeout(()=>{
+          if(window.__firebaseReady){
+            isFirebase=true;
+            document.getElementById('setup-screen').style.display='none';
+            setStatus('online','Firebase 실시간 연결됨');
+          } else {
+            document.getElementById('setup-screen').style.display='none';
+            setStatus('offline','Firebase 미연결 — config 확인 필요');
+          }
+          appInit();
+        },800);
+        return;
+      }
+    }catch(e){}
+  }
   document.getElementById('setup-screen').style.display='flex';
-  setStatus('offline','Firebase 미연결');appInit();
-})();
+  setStatus('offline','Firebase 미연결');
+  appInit();
+}
+window.addEventListener('load', _doStart);
 </script>
 </body>
 </html>
