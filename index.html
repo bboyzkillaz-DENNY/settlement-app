@@ -13,13 +13,19 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getDatabase,ref,onValue,set,push,remove,update,onDisconnect}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import{getDatabase,ref,onValue,get,set,push,remove,update,onDisconnect}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,onAuthStateChanged,signOut}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 window.__firebaseReady=false;
 const cfg=JSON.parse(localStorage.getItem('fb_cfg_integrated')||localStorage.getItem('fb_config')||'{}');
 if(cfg.apiKey&&cfg.databaseURL){
-  try{const app=initializeApp(cfg,'integrated');const db=getDatabase(app);
-  window.__fbi={ref:p=>ref(db,p),set,push,remove,update,onValue,onDisconnect};window.__firebaseReady=true;}
-  catch(e){console.error(e);}
+  try{
+    const app=initializeApp(cfg,'integrated');
+    const db=getDatabase(app);
+    const auth=getAuth(app);
+    window.__fbi={ref:p=>ref(db,p),set,push,remove,update,onValue,onDisconnect,get:p=>get(ref(db,p))};
+    window.__fbAuth={auth,signIn:(e,p)=>signInWithEmailAndPassword(auth,e,p),signUp:(e,p)=>createUserWithEmailAndPassword(auth,e,p),signOut:()=>signOut(auth),onAuthStateChanged:(cb)=>onAuthStateChanged(auth,cb)};
+    window.__firebaseReady=true;
+  }catch(e){console.error(e);}
 }
 </script>
 <style>
@@ -189,6 +195,17 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
 .over-badge{font-size:9px;background:#f44336;color:#fff;padding:1px 5px;border-radius:4px;margin-left:4px}
 .section-divider{border:none;border-top:2px solid #e8eaf6;margin:16px 0}
 @media(max-width:600px){.info-grid,.sum-grid{grid-template-columns:1fr 1fr}.cu-grid{grid-template-columns:1fr 1fr}}
+/* ── 권한 CSS ── */
+body.role-pending .tab-content,body.role-guest .tab-content{pointer-events:none;user-select:none;}
+body.role-pending .tabs-wrapper,body.role-guest .tabs-wrapper{pointer-events:none;}
+body.role-approved .tab[onclick="switchTab('settings')"],body.role-pending .tab[onclick="switchTab('settings')"],body.role-guest .tab[onclick="switchTab('settings'"]{opacity:.4;pointer-events:none;}
+body.role-approved #tab-settings,body.role-pending #tab-settings,body.role-guest #tab-settings{pointer-events:none;opacity:.5;}
+body.role-approved #tab-settings::after,body.role-pending #tab-settings::after{content:'🔒 설정은 관리자만 수정할 수 있습니다.';display:block;text-align:center;padding:20px;color:#999;font-size:13px;}
+body:not(.role-admin):not(.role-approved) .btn-danger{pointer-events:none;opacity:.4;}
+body:not(.role-admin):not(.role-approved) .btn-add{pointer-events:none;opacity:.4;}
+body:not(.role-admin):not(.role-approved) .data-table input,body:not(.role-admin):not(.role-approved) .data-table select{pointer-events:none;background:transparent!important;}
+.readonly-banner{display:none;background:#fff3e0;border-left:4px solid #ff9800;padding:8px 14px;font-size:12px;color:#e65100;font-weight:600;}
+body.role-pending .readonly-banner{display:block;}
 </style>
 </head>
 <body>
@@ -216,6 +233,38 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
   </div>
 </div>
 
+<!-- 로그인 화면 -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a237e,#4527a0);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:20px;padding:26px 22px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <h2 style="font-size:18px;color:#1a237e;margin-bottom:4px">🔐 로그인</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:16px">이메일과 비밀번호로 로그인하세요</p>
+    <div style="margin-bottom:10px"><label style="display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px">이메일</label><input id="login-email" type="email" placeholder="example@email.com" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit"></div>
+    <div style="margin-bottom:14px"><label style="display:block;font-size:11px;color:#888;font-weight:600;margin-bottom:3px">비밀번호</label><input id="login-pw" type="password" placeholder="비밀번호" style="width:100%;padding:9px 11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="login-err" style="display:none;background:#fdecea;color:#c62828;border-radius:8px;padding:8px 11px;font-size:12px;margin-bottom:10px"></div>
+    <button onclick="doLogin()" style="width:100%;padding:13px;background:linear-gradient(135deg,#1a237e,#4527a0);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px">로그인</button>
+    <button onclick="doSignUp()" style="width:100%;padding:11px;background:#f5f5f5;color:#555;border:1.5px solid #ddd;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">신규 가입 (관리자 승인 필요)</button>
+    <button onclick="startDemo()" style="width:100%;padding:9px;background:transparent;color:#aaa;border:none;font-size:12px;cursor:pointer">데모 모드로 시작</button>
+  </div>
+</div>
+<!-- 역할 확인 로딩 화면 -->
+<div id="auth-loading" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a237e,#4527a0);z-index:9996;align-items:center;justify-content:center;padding:20px">
+  <div style="text-align:center;color:#fff">
+    <div style="font-size:40px;margin-bottom:16px;animation:spin 1s linear infinite;display:inline-block">⏳</div>
+    <p style="font-size:15px;font-weight:600">권한 확인 중...</p>
+    <p style="font-size:12px;opacity:.7;margin-top:6px">잠시만 기다려주세요</p>
+  </div>
+</div>
+<style>@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style>
+<!-- 승인 대기 화면 -->
+<div id="pending-screen" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#37474f,#546e7a);z-index:9997;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:20px;padding:26px 22px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="font-size:48px;margin-bottom:12px">⏳</div>
+    <h2 style="font-size:17px;color:#37474f;margin-bottom:8px">승인 대기 중</h2>
+    <p style="font-size:13px;color:#666;margin-bottom:6px" id="pending-email-txt"></p>
+    <p style="font-size:12px;color:#999;margin-bottom:20px">관리자가 계정을 승인하면 이용 가능합니다.</p>
+    <button onclick="doSignOutBtn()" style="padding:10px 24px;background:#546e7a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">로그아웃</button>
+  </div>
+</div>
 <div class="sync-indicator" id="sync-ind">✓ 저장됨</div>
 <div class="install-banner" id="inst-banner">
   <span>📱 홈 화면에 앱으로 추가하세요!</span>
@@ -223,6 +272,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
   <button class="btn btn-sm" style="background:#eee;color:#666" onclick="document.getElementById('inst-banner').classList.remove('show')">✕</button>
 </div>
 
+<div class="readonly-banner" id="readonly-banner">👁️ 읽기 전용 모드 — 관리자 승인 후 수정 가능합니다.</div>
 <div class="status-bar">
   <div class="status-dot offline" id="s-dot"></div>
   <span id="s-txt">연결 중...</span>
@@ -320,9 +370,10 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     <div id="monthly-person" class="sub-tab-content">
       <div class="filter-bar">
         <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('person','code',this.value)" id="flt-p-code"><option value="">코드 전체</option></select>
         <select onchange="applyFilter('person','month',this.value)" id="flt-p-month"><option value="">월 전체</option></select>
-        <select onchange="applyFilter('person','category',this.value)" id="flt-p-cat"><option value="">구분 전체</option></select>
+        <select onchange="applyFilter('person','code',this.value)" id="flt-p-code"><option value="">코드 전체</option></select>
+        <select onchange="applyFilter('person','category',this.value)" id="flt-p-cat"><option value="">세부항목 전체</option></select>
+        <input type="text" id="flt-p-name" placeholder="이름" oninput="applyFilter('person','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:70px;flex:1">
         <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('person')">초기화</button>
       </div>
       <div class="sel-toolbar" id="sel-person">
@@ -335,7 +386,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
         <table class="data-table" style="min-width:1200px">
           <thead><tr>
             <th class="cbc"><input type="checkbox" id="chk-person" onchange="toggleAll('person',this.checked)"></th>
-            <th>월</th><th>예산코드</th><th>구분</th><th>이름</th><th>주민번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
+            <th>월</th><th>항목</th><th>세부항목</th><th>이름</th><th>주민번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
             <th>공급가액</th><th>세액3.3%<span class="auto-badge">자동</span></th><th>예술인보험<span class="auto-badge">자동</span></th><th>실지급액<span class="auto-badge">자동</span></th>
             <th>비고</th><th>삭제</th>
           </tr></thead>
@@ -352,9 +403,10 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     <div id="monthly-biz" class="sub-tab-content">
       <div class="filter-bar">
         <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('biz','code',this.value)" id="flt-b-code"><option value="">코드 전체</option></select>
         <select onchange="applyFilter('biz','month',this.value)" id="flt-b-month"><option value="">월 전체</option></select>
-        <select onchange="applyFilter('biz','category',this.value)" id="flt-b-cat"><option value="">구분 전체</option></select>
+        <select onchange="applyFilter('biz','code',this.value)" id="flt-b-code"><option value="">코드 전체</option></select>
+        <select onchange="applyFilter('biz','category',this.value)" id="flt-b-cat"><option value="">세부항목 전체</option></select>
+        <input type="text" id="flt-b-name" placeholder="업체명" oninput="applyFilter('biz','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:75px;flex:1">
         <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('biz')">초기화</button>
       </div>
       <div class="sel-toolbar" id="sel-biz">
@@ -367,8 +419,8 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
         <table class="data-table" style="min-width:1200px">
           <thead><tr>
             <th class="cbc"><input type="checkbox" id="chk-biz" onchange="toggleAll('biz',this.checked)"></th>
-            <th>월</th><th>예산코드</th><th>구분</th><th>업체명</th><th>사업자번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
-            <th>공급가액</th><th>부가세</th><th>원천세</th><th>실지급액<span class="auto-badge">자동</span></th>
+            <th>월</th><th>항목</th><th>세부항목</th><th>업체명</th><th>사업자번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
+            <th>공급가액</th><th>부가세<span class="auto-badge">자동</span></th><th>고용보험료</th><th>실지급액<span class="auto-badge">자동</span></th>
             <th>비고</th><th>삭제</th>
           </tr></thead>
           <tbody id="body-biz"></tbody>
@@ -404,8 +456,10 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
     </div>
     <div class="filter-bar">
       <span class="filter-label">필터:</span>
-      <select onchange="applyFilter('actor','code',this.value)" id="flt-ac-code"><option value="">코드 전체</option></select>
       <select onchange="applyFilter('actor','month',this.value)" id="flt-ac-month"><option value="">월 전체</option></select>
+      <select onchange="applyFilter('actor','code',this.value)" id="flt-ac-code"><option value="">코드 전체</option></select>
+      <input type="text" id="flt-ac-role" placeholder="배역명" oninput="applyFilter('actor','role',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:80px;flex:1">
+      <select onchange="applyFilter('actor','union',this.value)" id="flt-ac-union"><option value="">조합원 전체</option><option value="true">조합원</option><option value="false">비조합원</option></select>
       <select onchange="applyFilter('actor','type',this.value)" id="flt-ac-type"><option value="">구분 전체</option><option>원징</option><option>세계</option></select>
       <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('actor')">초기화</button>
     </div>
@@ -443,7 +497,31 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
      TAB 5: 설정
 ══════════════════════════════════════ -->
 <div id="tab-settings" class="tab-content">
-  <div class="card">
+  <!-- 관리자 전용 패널 -->
+  <div class="card" id="admin-panel" style="display:none">
+    <div class="card-header" style="background:linear-gradient(135deg,#b71c1c,#c62828)">🛡️ 관리자 패널
+      <span id="admin-my-badge" style="font-size:11px;background:rgba(255,255,255,.25);padding:2px 8px;border-radius:10px"></span>
+    </div>
+    <div class="card-body">
+      <div style="margin-bottom:16px">
+        <h3 style="font-size:13px;font-weight:700;color:#b71c1c;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #fdecea">관리자 설정 (최대 2명)</h3>
+        <div id="admin-list" style="margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input id="new-admin-email" type="email" placeholder="관리자 이메일 추가" style="flex:1;padding:8px 11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit">
+          <button class="btn btn-danger btn-sm" onclick="addAdmin()">+ 추가</button>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:13px;font-weight:700;color:#1a237e;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #e8eaf6">사용자 승인 관리</h3>
+        <div id="pending-users-list"><p style="font-size:12px;color:#aaa">승인 대기 중인 사용자가 없습니다.</p></div>
+        <div style="margin-top:12px">
+          <h4 style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">승인된 사용자</h4>
+          <div id="approved-users-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="settings-main-card">
     <div class="card-header">📌 프로젝트 기본 정보</div>
     <div class="card-body">
       <div class="info-grid">
@@ -593,7 +671,7 @@ function connectFB(){
   if(!cfg.apiKey||!cfg.databaseURL){alert('apiKey와 databaseURL은 필수입니다.');return;}
   localStorage.setItem('fb_cfg_integrated',JSON.stringify(cfg));location.reload();
 }
-function startDemo(){demoMode=true;document.getElementById('setup-screen').style.display='none';setStatus('demo','데모 모드');appInit();loadDemo();}
+function startDemo(){demoMode=true;document.getElementById('setup-screen').style.display='none';document.getElementById('login-screen').style.display='none';setStatus('demo','데모 모드');userRole='admin';applyRole('admin');appInit();loadDemo();}
 
 // ════════════════════════════════════════════
 // 초기화
@@ -772,19 +850,26 @@ function calcActor(r){
   const feeTot=feePerEp*episodes;
   const isSimple=(r.grade==='주연'||r.grade==='조연');
   const isMid=(r.grade==='단역'||r.grade==='무술');
-  // 단역/무술은 정산비율 없이 feeTot+extra, 주연/조연은 feeTot만, 나머지는 ratio 적용
   const ratio=(!isSimple&&!isMid)?(+r.ratio||1):1;
   const settled=isSimple?feeTot:(feeTot+extra)*ratio;
-  const insComp=Math.floor((settled*0.75*0.008)/10)*10; // 고용보험(회사)
-  const vat=(r.type==='세계')?Math.floor(settled*0.1/10)*10:0;
-  const unionFee=(r.union)?Math.floor(feeTot*0.01/10)*10:0;
-  const incomeTax=(r.type==='원징')?Math.floor(settled*0.03/10)*10:0;
-  const resTax=Math.floor(incomeTax*0.1/10)*10;
-  const insEmp=insComp; // 본인부담 = 회사부담
+  const _insComp=Math.floor((settled*0.75*0.008)/10)*10;
+  const _vat=(r.type==='세계')?Math.floor(settled*0.1/10)*10:0;
+  const _unionFee=(r.union)?Math.floor(feeTot*0.01/10)*10:0;
+  const _incomeTax=(r.type==='원징')?Math.floor(settled*0.03/10)*10:0;
+  const _resTax=Math.floor(_incomeTax*0.1/10)*10;
+  const _insEmp=_insComp;
+  // override 적용
+  const insComp=r._insCompOv!==undefined?+r._insCompOv:_insComp;
+  const vat=r._vatOv!==undefined?+r._vatOv:_vat;
+  const unionFee=r._unionOv!==undefined?+r._unionOv:_unionFee;
+  const incomeTax=r._itaxOv!==undefined?+r._itaxOv:_incomeTax;
+  const resTax=r._rtaxOv!==undefined?+r._rtaxOv:_resTax;
+  const insEmp=r._insEmpOv!==undefined?+r._insEmpOv:_insEmp;
   const deductions=unionFee+incomeTax+resTax+insEmp;
   const netPay=settled+vat-deductions;
   const totalCost=insComp+netPay;
-  return {feeTot,settled,insComp,vat,unionFee,incomeTax,resTax,insEmp,deductions,netPay,totalCost};
+  return {feeTot,settled,insComp,vat,unionFee,incomeTax,resTax,insEmp,deductions,netPay,totalCost,
+    _insComp,_vat,_unionFee,_incomeTax,_resTax,_insEmp};
 }
 
 // ════════════════════════════════════════════
@@ -815,12 +900,12 @@ function renderActorTable(){
     if(isMid){
       hCols+=`<th>추가수당</th><th>정산후합계<span class="auto-badge">자동</span></th>`;
     }
-    hCols+=`<th>고용보험(회사)<span class="auto-badge">자동</span></th>
-      <th>부가세<span class="auto-badge">자동</span></th>
+    hCols+=`<th>부가세<span class="auto-badge">자동</span></th>
       <th>조합비<span class="auto-badge">자동</span></th>
       <th>소득세<span class="auto-badge">자동</span></th>
       <th>주민세<span class="auto-badge">자동</span></th>
       <th>고용보험(본인)<span class="auto-badge">자동</span></th>
+      <th>고용보험(회사)<span class="auto-badge">자동</span></th>
       <th>공제합계<span class="auto-badge">자동</span></th>
       <th>최종입금액<span class="auto-badge">자동</span></th>
       <th>최종지출액<span class="auto-badge">자동</span></th>
@@ -834,8 +919,9 @@ function renderActorTable(){
     let tfCols=`<tr class="total-r"><td></td><td colspan="8" style="text-align:right;padding-right:8px;font-weight:700">합 계</td>`;
     tfCols+=`<td class="ac" id="at-fee">0</td>`;
     if(isMid){tfCols+=`<td class="ac" id="at-extra">0</td><td class="ac" id="at-settled">0</td>`;}
-    tfCols+=`<td class="ac" id="at-ins">0</td><td class="ac" id="at-vat">0</td><td class="ac" id="at-union">0</td>
+    tfCols+=`<td class="ac" id="at-vat">0</td><td class="ac" id="at-union">0</td>
       <td class="ac" id="at-itax">0</td><td class="ac" id="at-rtax">0</td><td class="ac" id="at-eins">0</td>
+      <td class="ac" id="at-ins">0</td>
       <td class="ac" id="at-deduct">0</td><td class="ac" id="at-net">0</td><td class="ac" id="at-total">0</td>
       <td colspan="3"></td></tr>`;
     tfoot.innerHTML=tfCols;
@@ -871,12 +957,13 @@ function renderActorTable(){
       row+=`<td class="ac"><input type="text" class="num-input" value="${fmtI(r.extra)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','extra',parseI(this.value))" style="text-align:right;min-width:90px"></td>
       <td class="auto-c">${fmtNum(c.settled)}</td>`;
     }
-    row+=`<td class="auto-c">${fmtNum(c.insComp)}</td>
-      <td class="auto-c">${fmtNum(c.vat)}</td>
-      <td class="auto-c">${fmtNum(c.unionFee)}</td>
-      <td class="auto-c">${fmtNum(c.incomeTax)}</td>
-      <td class="auto-c">${fmtNum(c.resTax)}</td>
-      <td class="auto-c">${fmtNum(c.insEmp)}</td>
+    const aInp=(field,val,ovKey)=>`<input type="text" class="num-input" value="${fmtI(val)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','${ovKey}',parseI(this.value))" style="text-align:right;width:100%;min-width:70px;background:transparent;border:none;color:#2e7d32;font-weight:600">`;
+    row+=`<td class="auto-c">${aInp('vat',c.vat,'_vatOv')}</td>
+      <td class="auto-c">${aInp('unionFee',c.unionFee,'_unionOv')}</td>
+      <td class="auto-c">${aInp('incomeTax',c.incomeTax,'_itaxOv')}</td>
+      <td class="auto-c">${aInp('resTax',c.resTax,'_rtaxOv')}</td>
+      <td class="auto-c">${aInp('insEmp',c.insEmp,'_insEmpOv')}</td>
+      <td class="auto-c">${aInp('insComp',c.insComp,'_insCompOv')}</td>
       <td class="auto-c" style="font-weight:700;color:#c62828">${fmtNum(c.deductions)}</td>
       <td class="auto-c" style="font-weight:700;color:#1a237e">${fmtNum(c.netPay)}</td>
       <td class="auto-c" style="font-weight:700;color:#2e7d32">${fmtNum(c.totalCost)}</td>
@@ -927,7 +1014,7 @@ function exportActorSheet(){
     const gradeData=Object.values(actorData||{}).filter(r=>r.grade===grade);
     if(!gradeData.length)return;
     const baseHdr=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
-    const tailHdr=['고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고'];
+    const tailHdr=['부가세','조합비','소득세','주민세','고용보험(본인)','고용보험(회사)','공제합계','최종입금액','최종지출액','지급일','비고'];
     const headers=isSimple
       ?[...baseHdr,...tailHdr]
       :isMid?[...baseHdr,'추가수당','정산후합계',...tailHdr]
@@ -936,7 +1023,7 @@ function exportActorSheet(){
     gradeData.forEach(r=>{
       const c=calcActor(r);
       const base=[r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot];
-      const tail=[c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||''];
+      const tail=[c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.insComp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||''];
       if(isSimple) rows.push([...base,...tail]);
       else if(isMid) rows.push([...base,r.extra||0,c.settled,...tail]);
       else rows.push([...base,r.extra||0,r.ratio||1,c.settled,...tail]);
@@ -976,7 +1063,7 @@ function getAllTransactions(){
   // 출연료
   Object.values(actorData||{}).forEach(r=>{const c=calcActor(r);rows.push({source:'actor',month:+r.month||0,code:+r.code||400,supply:c.settled,net:c.netPay});});
   // 월정산 개인
-  Object.values(personData||{}).forEach(r=>rows.push({source:'person',month:+r.month||0,code:+r.code||0,supply:+r.supply||0,net:calcPersonNet(+r.supply||0)}));
+  Object.values(personData||{}).forEach(r=>rows.push({source:'person',month:+r.month||0,code:+r.code||0,supply:+r.supply||0,net:calcPersonNetEff(r)}));
   // 월정산 업체
   Object.values(bizData||{}).forEach(r=>rows.push({source:'biz',month:+r.month||0,code:+r.code||0,supply:+r.supply||0,net:calcBizNet(+r.supply||0,+r.vat||0,+r.tax||0)}));
   // 카드
@@ -1094,7 +1181,9 @@ function renderPersonTable(){
       <td><input value="${esc(r.account)}" onchange="updP('${id}','account',this.value)" style="min-width:105px"></td>
       <td><input value="${esc(r.holder)}" onchange="updP('${id}','holder',this.value)" style="min-width:55px"></td>
       <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
-      <td class="auto-c">${fmtNum(tax)}</td><td class="auto-c">${fmtNum(ins)}</td><td class="auto-c">${fmtNum(net)}</td>
+      <td class="auto-c"><input type="text" class="num-input" value="${fmtI(r.taxOverride!==undefined?r.taxOverride:tax)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','taxOverride',parseI(this.value))" style="text-align:right;min-width:80px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
+      <td class="auto-c"><input type="text" class="num-input" value="${fmtI(r.insOverride!==undefined?r.insOverride:ins)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','insOverride',parseI(this.value))" style="text-align:right;min-width:80px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
+      <td class="auto-c">${fmtNum((+r.supply||0)-(r.taxOverride!==undefined?r.taxOverride:tax)-(r.insOverride!==undefined?r.insOverride:ins))}</td>
       <td><input value="${esc(r.notes)}" onchange="updP('${id}','notes',this.value)" style="min-width:80px"></td>
       <td><button class="btn btn-danger btn-sm" onclick="delPerson('${id}')">✕</button></td>
     </tr>`;
@@ -1102,10 +1191,21 @@ function renderPersonTable(){
   updatePersonTotals();buildFilterOpts('person');updateSelToolbar('person');
   initColResize('body-person');autoFitCols('body-person');
 }
+function calcPersonNetEff(r){
+  const sup=+r.supply||0;
+  const tax=r.taxOverride!==undefined?+r.taxOverride:calcTax(sup);
+  const ins=r.insOverride!==undefined?+r.insOverride:calcIns(sup);
+  return sup-tax-ins;
+}
 function updatePersonTotals(){
   const all=Object.values(personData||{});
   const s={sup:0,tax:0,ins:0,net:0};
-  all.forEach(r=>{s.sup+=(+r.supply||0);s.tax+=calcTax(+r.supply||0);s.ins+=calcIns(+r.supply||0);s.net+=calcPersonNet(+r.supply||0);});
+  all.forEach(r=>{
+    const sup=+r.supply||0;
+    const tax=r.taxOverride!==undefined?+r.taxOverride:calcTax(sup);
+    const ins=r.insOverride!==undefined?+r.insOverride:calcIns(sup);
+    s.sup+=sup;s.tax+=tax;s.ins+=ins;s.net+=sup-tax-ins;
+  });
   setText('pt-sup',fmtNum(s.sup));setText('pt-tax',fmtNum(s.tax));setText('pt-ins',fmtNum(s.ins));setText('pt-net',fmtNum(s.net));
 }
 function addPersonRow(){
@@ -1147,7 +1247,7 @@ function renderBizTable(){
       <td><input value="${esc(r.account)}" onchange="updB('${id}','account',this.value)" style="min-width:105px"></td>
       <td><input value="${esc(r.holder)}" onchange="updB('${id}','holder',this.value)" style="min-width:55px"></td>
       <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updB('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.vat)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updB('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px"></td>
+      <td class="auto-c"><input type="text" class="num-input" value="${fmtI(r.vat)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="bizData['${id}']._vatOverride=true;updB('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
       <td class="ac"><input type="text" class="num-input" value="${fmtI(r.tax)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updB('${id}','tax',parseI(this.value))" style="text-align:right;min-width:85px"></td>
       <td class="auto-c">${fmtNum(net)}</td>
       <td><input value="${esc(r.notes)}" onchange="updB('${id}','notes',this.value)" style="min-width:80px"></td>
@@ -1172,6 +1272,10 @@ function updB(id,field,val){
   clearTimeout(saveTimer[`b_${id}`]);
   if(!bizData[id])bizData[id]={};
   bizData[id][field]=val;
+  if(field==='supply'&&!bizData[id]._vatOverride){
+    bizData[id].vat=Math.round(val*0.1);
+    saveTimer[`b_${id}_vat`]=setTimeout(()=>dbUpdate(`businesses/${id}`,{vat:bizData[id].vat}),500);
+  }
   renderBizTable();renderFinal();
   saveTimer[`b_${id}`]=setTimeout(()=>dbUpdate(`businesses/${id}`,{[field]:val}),500);
 }
@@ -1294,8 +1398,12 @@ function buildCardPanel(card,active){
       </div>
       <div class="filter-bar">
         <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('${cid}','code',+this.value||0)" id="flt-${cid}-code"><option value="">코드 전체</option></select>
         <select onchange="applyFilter('${cid}','month',+this.value||0)" id="flt-${cid}-month"><option value="">월 전체</option></select>
+        <select onchange="applyFilter('${cid}','code',+this.value||0)" id="flt-${cid}-code"><option value="">코드 전체</option></select>
+        <select onchange="applyFilter('${cid}','middle',this.value)" id="flt-${cid}-mid"><option value="">중항목 전체</option></select>
+        <select onchange="applyFilter('${cid}','minor',this.value)" id="flt-${cid}-minor"><option value="">소항목 전체</option></select>
+        <input type="date" id="flt-${cid}-date" onchange="applyFilter('${cid}','date',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
+        <input type="text" id="flt-${cid}-detail" placeholder="세부내역" oninput="applyFilter('${cid}','detail',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:90px;flex:1">
         <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('${cid}')">초기화</button>
       </div>
       <div class="sel-toolbar" id="sel-${cid}">
@@ -1595,7 +1703,7 @@ function switchCardTab(cid){
 }
 function refreshCardTable(cid){
   const tbody=document.getElementById(`body-${cid}`);if(!tbody)return;
-  const filt=getFiltered(cid);
+  const filt=getFiltered(cid).sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="11" class="empty-state">지출 내역이 없습니다.</td></tr>`;const te=document.getElementById(`total-${cid}`);if(te)te.textContent='0';return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const sel=(selected[cid]||new Set()).has(id);
@@ -1712,11 +1820,22 @@ function buildFilterOpts(tid){
   const codes=uniq('code').map(c=>{const b=budgetCodes.find(x=>x.code===+c);return{val:c,label:b?`${c} ${b.name}`:c};});
   const months=uniq('month');
   const setOpts=(id,items,ph)=>{const el=document.getElementById(id);if(!el)return;const cur=el.value;el.innerHTML=`<option value="">${ph}</option>`+items.map(i=>typeof i==='object'?`<option value="${i.val}" ${cur==i.val?'selected':''}>${esc(String(i.label))}</option>`:`<option value="${i}" ${cur==i?'selected':''}>${i}월</option>`).join('');};
-  if(tid==='person'){setOpts('flt-p-code',codes,'코드 전체');setOpts('flt-p-month',months,'월 전체');setOpts('flt-p-cat',uniq('category').map(v=>({val:v,label:v})),'구분 전체');}
-  else if(tid==='biz'){setOpts('flt-b-code',codes,'코드 전체');setOpts('flt-b-month',months,'월 전체');setOpts('flt-b-cat',uniq('category').map(v=>({val:v,label:v})),'구분 전체');}
-  else if(tid==='actor'){setOpts('flt-ac-code',codes,'코드 전체');setOpts('flt-ac-month',months,'월 전체');}
-  else if(tid==='transfer'){setOpts('flt-tr-code',codes,'코드 전체');setOpts('flt-tr-month',months,'월 전체');}
-  else if(isCard){setOpts(`flt-${tid}-code`,codes,'코드 전체');setOpts(`flt-${tid}-month`,months,'월 전체');}
+  if(tid==='person'){
+    setOpts('flt-p-code',codes,'코드 전체');setOpts('flt-p-month',months,'월 전체');
+    setOpts('flt-p-cat',uniq('category').map(v=>({val:v,label:v})),'세부항목 전체');
+    setOpts('flt-p-bank',uniq('bank').map(v=>({val:v,label:v})),'은행 전체');
+  } else if(tid==='biz'){
+    setOpts('flt-b-code',codes,'코드 전체');setOpts('flt-b-month',months,'월 전체');
+    setOpts('flt-b-cat',uniq('category').map(v=>({val:v,label:v})),'세부항목 전체');
+    setOpts('flt-b-bank',uniq('bank').map(v=>({val:v,label:v})),'은행 전체');
+  } else if(tid==='actor'){
+    setOpts('flt-ac-code',codes,'코드 전체');setOpts('flt-ac-month',months,'월 전체');
+  } else if(tid==='transfer'){setOpts('flt-tr-code',codes,'코드 전체');setOpts('flt-tr-month',months,'월 전체');}
+  else if(isCard){
+    setOpts(`flt-${tid}-code`,codes,'코드 전체');setOpts(`flt-${tid}-month`,months,'월 전체');
+    setOpts(`flt-${tid}-mid`,uniq('middle').map(v=>({val:v,label:v})),'중항목 전체');
+    setOpts(`flt-${tid}-minor`,uniq('minor').map(v=>({val:v,label:v})),'소항목 전체');
+  }
 }
 function getFiltered(tid){
   const f=filters[tid]||{};
@@ -1726,12 +1845,30 @@ function getFiltered(tid){
     if(f.month&&+r.month!==+f.month)return false;
     if(f.category&&r.category!==f.category)return false;
     if(f.type&&r.type!==f.type)return false;
+    // 출연료 추가 필터
+    if(f.role&&!(r.role||'').toLowerCase().includes(f.role.toLowerCase()))return false;
+    if(f.name&&!(r.name||'').toLowerCase().includes(f.name.toLowerCase()))return false;
+    if(f.union!==undefined&&f.union!==''){const wantUnion=(f.union==='true');if(!!r.union!==wantUnion)return false;}
+    // 개인/업체 추가 필터
+    if(f.rrn&&!(r.rrn||'').includes(f.rrn))return false;
+    if(f.bank&&r.bank!==f.bank)return false;
+    if(f.bizNum&&!(r.bizNum||'').includes(f.bizNum))return false;
+    // 카드 추가 필터
+    if(f.middle&&r.middle!==f.middle)return false;
+    if(f.minor&&r.minor!==f.minor)return false;
+    if(f.date&&r.date!==f.date)return false;
+    if(f.detail&&!(r.detail||'').toLowerCase().includes(f.detail.toLowerCase()))return false;
     return true;
   });
 }
 function applyFilter(tid,field,val){if(!filters[tid])filters[tid]={};filters[tid][field]=val;reRender(tid);}
 function clearFilter(tid){filters[tid]={};
-  document.querySelectorAll(`[id^="flt-ac-"],[id^="flt-p-"],[id^="flt-b-"],[id^="flt-tr-"]`).forEach(el=>{el.value='';});
+  const isCard=appSettings.cards.some(c=>c.id===tid);
+  if(tid==='actor')document.querySelectorAll('[id^="flt-ac-"]').forEach(el=>{el.value='';});
+  else if(tid==='person')document.querySelectorAll('[id^="flt-p-"]').forEach(el=>{el.value='';});
+  else if(tid==='biz')document.querySelectorAll('[id^="flt-b-"]').forEach(el=>{el.value='';});
+  else if(tid==='transfer')document.querySelectorAll('[id^="flt-tr-"]').forEach(el=>{el.value='';});
+  else if(isCard)document.querySelectorAll(`[id^="flt-${tid}-"]`).forEach(el=>{el.value='';});
   reRender(tid);}
 function toggleRow(tid,id,checked){
   if(!selected[tid])selected[tid]=new Set();
@@ -1879,23 +2016,23 @@ function exportSel(tid){
   const wb=XLSX.utils.book_new();
   const isCard=appSettings.cards.some(c=>c.id===tid);
   if(tid==='person'){
-    const rows=[['월','예산코드','구분','이름','주민번호','은행','계좌번호','예금주','공급가액','세액(3.3%)','예술인보험','실지급액','비고']];
+    const rows=[['월','항목','세부항목','이름','주민번호','은행','계좌번호','예금주','공급가액','세액(3.3%)','예술인보험','실지급액','비고']];
     sel.forEach(id=>{const r=personData[id];if(r)rows.push([r.month,r.code,r.category,r.name,r.rrn,r.bank,r.account,r.holder,r.supply||0,calcTax(+r.supply||0),calcIns(+r.supply||0),calcPersonNet(+r.supply||0),r.notes]);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'개인지급');
   }else if(tid==='biz'){
-    const rows=[['월','예산코드','구분','업체명','사업자번호','은행','계좌번호','예금주','공급가액','부가세','원천세','실지급액','비고']];
+    const rows=[['월','항목','세부항목','업체명','사업자번호','은행','계좌번호','예금주','공급가액','부가세','고용보험료','실지급액','비고']];
     sel.forEach(id=>{const r=bizData[id];if(r)rows.push([r.month,r.code,r.category,r.name,r.bizNum,r.bank,r.account,r.holder,r.supply||0,r.vat||0,r.tax||0,calcBizNet(+r.supply||0,+r.vat||0,+r.tax||0),r.notes]);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'업체지급');
   }else if(tid==='actor'){
     const isSimple=(currentActorGrade==='주연'||currentActorGrade==='조연');
     const isMid=(currentActorGrade==='단역'||currentActorGrade==='무술');
     const baseHdr=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
-    const tailHdr=['고용보험(회사)','부가세','조합비','소득세','주민세','고용보험(본인)','공제합계','최종입금액','최종지출액','지급일','비고'];
+    const tailHdr=['부가세','조합비','소득세','주민세','고용보험(본인)','고용보험(회사)','공제합계','최종입금액','최종지출액','지급일','비고'];
     const headers=isSimple?[...baseHdr,...tailHdr]:isMid?[...baseHdr,'추가수당','정산후합계',...tailHdr]:[...baseHdr,'추가수당','정산비율','정산후합계',...tailHdr];
     const rows=[headers];
     sel.forEach(id=>{const r=actorData[id];if(r){const c=calcActor(r);
       const base=[r.month,r.code,r.role,r.name,r.union?'O':'X',r.type||'원징',r.feePerEp||0,r.episodes||0,c.feeTot];
-      const tail=[c.insComp,c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||''];
+      const tail=[c.vat,c.unionFee,c.incomeTax,c.resTax,c.insEmp,c.insComp,c.deductions,c.netPay,c.totalCost,r.payDate||'',r.notes||''];
       if(isSimple){rows.push([...base,...tail]);}
       else if(isMid){rows.push([...base,r.extra||0,c.settled,...tail]);}
       else{rows.push([...base,r.extra||0,r.ratio||1,c.settled,...tail]);}
@@ -2011,7 +2148,7 @@ function exportMonthly(){
   const sTotA=es2(EC.NAVY,EC.WHITE,true,10,'right');
   // 개인지급 시트
   {const ws={};const m=[];let R=0;
-    const hdrs=['월','예산코드','구분','이름','주민번호','은행','계좌번호','예금주','공급가액','세액(3.3%)','예술인보험','실지급액','비고'];
+    const hdrs=['월','항목','세부항목','이름','주민번호','은행','계좌번호','예금주','공급가액','세액(3.3%)','예술인보험','실지급액','비고'];
     ws[ea(0,R)]=em2(`${proj} 월정산 (개인지급)`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
     const rows=Object.values(personData||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
@@ -2032,7 +2169,7 @@ function exportMonthly(){
   }
   // 업체지급 시트
   {const ws={};const m=[];let R=0;
-    const hdrs=['월','예산코드','구분','업체명','사업자번호','은행','계좌번호','예금주','공급가액','부가세','원천세','실지급액','비고'];
+    const hdrs=['월','항목','세부항목','업체명','사업자번호','은행','계좌번호','예금주','공급가액','부가세','고용보험료','실지급액','비고'];
     ws[ea(0,R)]=em2(`${proj} 월정산 (업체지급)`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
     const rows=Object.values(bizData||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
@@ -2366,6 +2503,207 @@ function showSync(){const el=document.getElementById('sync-ind');el.classList.ad
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
 
 // ════════════════════════════════════════════
+// 인증 & 권한
+// ════════════════════════════════════════════
+let currentUser=null, userRole='guest'; // 'admin'|'approved'|'pending'|'guest'
+let adminsData={}, approvedData={}, pendingData={};
+
+function showLoginScreen(msg){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('pending-screen').style.display='none';
+  document.getElementById('auth-loading').style.display='none';
+  if(msg){showLoginErr(msg);}else{hideLoginErr();}
+}
+function hideLoginScreen(){document.getElementById('login-screen').style.display='none';}
+function showPendingScreen(email){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('auth-loading').style.display='none';
+  document.getElementById('pending-screen').style.display='flex';
+  document.getElementById('pending-email-txt').textContent=email||'';
+}
+function hidePendingScreen(){document.getElementById('pending-screen').style.display='none';}
+function showAuthLoading(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('pending-screen').style.display='none';
+  document.getElementById('auth-loading').style.display='flex';
+}
+
+function doLogin(){
+  if(!window.__fbAuth){showToast('⚠️ Firebase 연결 후 로그인 가능합니다.');return;}
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  if(!email||!pw){showLoginErr('이메일과 비밀번호를 입력하세요.');return;}
+  const btn=document.querySelector('#login-screen button');
+  if(btn){btn.disabled=true;btn.textContent='확인 중...';}
+  window.__fbAuth.signIn(email,pw)
+    .then(()=>{hideLoginErr();showAuthLoading();})
+    .catch(e=>{
+      if(btn){btn.disabled=false;btn.textContent='로그인';}
+      const msg=e.code==='auth/user-not-found'?'등록되지 않은 이메일입니다.':e.code==='auth/wrong-password'?'비밀번호가 틀렸습니다.':e.code==='auth/invalid-credential'?'이메일 또는 비밀번호가 올바르지 않습니다.':'로그인 실패: '+e.message;
+      showLoginErr(msg);
+    });
+}
+function doSignUp(){
+  if(!window.__fbAuth){showToast('⚠️ Firebase 연결 후 가입 가능합니다.');return;}
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  if(!email||!pw){showLoginErr('이메일과 비밀번호를 입력하세요.');return;}
+  if(pw.length<6){showLoginErr('비밀번호는 6자 이상이어야 합니다.');return;}
+  window.__fbAuth.signUp(email,pw)
+    .then(cred=>{
+      const emailKey=btoa(email).replace(/=/g,'');
+      // 가입 직후 즉시 로그아웃 — 승인 후에만 로그인 허용
+      window.__fbAuth.signOut().then(()=>{
+        // pending 등록은 로그아웃 후 처리 (로그인 없이 DB 쓰기 불가 시 규칙 완화 필요)
+        showLoginScreen('✅ 가입 완료! 관리자 승인 후 로그인하세요.');
+      });
+    })
+    .catch(e=>{
+      const msg=e.code==='auth/email-already-in-use'?'이미 가입된 이메일입니다.':'가입 실패: '+e.message;
+      showLoginErr(msg);
+    });
+}
+function doSignOutBtn(){
+  if(window.__fbAuth)window.__fbAuth.signOut();
+  currentUser=null;userRole='guest';
+  showLoginScreen();
+}
+function showLoginErr(msg){const el=document.getElementById('login-err');el.textContent=msg;el.style.display='block';}
+function hideLoginErr(){const el=document.getElementById('login-err');if(el)el.style.display='none';}
+
+function initAuth(){
+  if(!window.__fbAuth)return;
+  window.__fbAuth.onAuthStateChanged(user=>{
+    currentUser=user;
+    if(!user){showLoginScreen();applyRole('guest');return;}
+    // 로그인 확인 → 로딩 화면 표시 후 역할 판단
+    showAuthLoading();
+    _resolveRole(user);
+  });
+}
+
+async function _resolveRole(user){
+  try{
+    const emailKey=btoa(user.email).replace(/=/g,'');
+    // get() = 1회성 읽기 (Promise 반환)
+    const [admSnap,appSnap]=await Promise.all([
+      window.__fbi.get(`${DB}/admins`),
+      window.__fbi.get(`${DB}/approvedUsers`),
+    ]);
+    adminsData=admSnap.val()||{};
+    approvedData=appSnap.val()||{};
+
+    const isAdmin=Object.values(adminsData).some(e=>e===user.email);
+    const isApproved=!!approvedData[emailKey];
+
+    // 로딩 화면 숨김
+    document.getElementById('auth-loading').style.display='none';
+
+    if(isAdmin){
+      userRole='admin';applyRole('admin');
+    } else if(isApproved){
+      userRole='approved';applyRole('approved');
+    } else if(Object.keys(adminsData).length===0){
+      // 최초 사용자 → 자동 관리자
+      window.__fbi.set(window.__fbi.ref(`${DB}/admins/admin1`),user.email);
+      userRole='admin';applyRole('admin');
+    } else {
+      // 미승인 → 대기 화면
+      window.__fbi.set(window.__fbi.ref(`${DB}/pendingUsers/${emailKey}`),{email:user.email,requestedAt:Date.now()});
+      userRole='pending';applyRole('pending');
+      showPendingScreen(user.email);
+    }
+
+    // 실시간 리스너 — 승인/관리자 변경 즉시 반영
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/approvedUsers`),s=>{
+      approvedData=s.val()||{};
+      if(userRole==='pending'&&approvedData[emailKey]){
+        userRole='approved';applyRole('approved');
+        hidePendingScreen();
+        showToast('✅ 승인되었습니다! 이용 가능합니다.');
+      }
+      renderAdminPanel();
+    });
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/admins`),s=>{adminsData=s.val()||{};renderAdminPanel();});
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/pendingUsers`),s=>{pendingData=s.val()||{};renderAdminPanel();});
+    renderAdminPanel();
+  }catch(e){
+    console.error('역할 확인 실패:',e);
+    document.getElementById('auth-loading').style.display='none';
+    showLoginScreen('오류가 발생했습니다. 다시 로그인해 주세요.');
+  }
+}
+
+function applyRole(role){
+  const body=document.body;
+  body.classList.remove('role-admin','role-approved','role-pending','role-guest');
+  body.classList.add(`role-${role}`);
+  const sb=document.getElementById('s-dot');
+  if(role==='admin'&&sb){sb.title='관리자';}
+  // 헤더에 로그아웃 버튼
+  const ha=document.querySelector('.header-actions');
+  if(ha&&currentUser){
+    let lb=document.getElementById('hdr-logout');
+    if(!lb){lb=document.createElement('button');lb.id='hdr-logout';lb.className='btn btn-secondary btn-sm';lb.onclick=doSignOutBtn;ha.prepend(lb);}
+    lb.textContent=`${currentUser.email.split('@')[0]} 로그아웃`;
+  }
+  // 관리자 패널 표시
+  const ap=document.getElementById('admin-panel');
+  if(ap)ap.style.display=(role==='admin')?'block':'none';
+}
+
+function renderAdminPanel(){
+  if(userRole!=='admin')return;
+  // 관리자 목록
+  const admList=document.getElementById('admin-list');
+  if(admList){
+    const admins=Object.values(adminsData).filter(Boolean);
+    admList.innerHTML=admins.map((e,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#fdecea;border-radius:8px;margin-bottom:4px;font-size:12px"><span>👑 ${esc(e)}</span><button class="btn btn-sm" style="background:#c62828;color:#fff;font-size:10px;padding:2px 7px" onclick="removeAdmin('${esc(e)}')">삭제</button></div>`).join('')||'<p style="font-size:12px;color:#aaa">등록된 관리자가 없습니다.</p>';
+  }
+  // 대기 목록
+  const pl=document.getElementById('pending-users-list');
+  if(pl){
+    const pending=Object.entries(pendingData).filter(([,v])=>!approvedData[Object.keys(pendingData).find(k=>pendingData[k]===v)]);
+    const items=Object.entries(pendingData).filter(([k,v])=>!approvedData[k]);
+    pl.innerHTML=items.length?items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff3e0;border-radius:8px;margin-bottom:5px;font-size:12px"><span>⏳ ${esc(v.email||k)}</span><div style="display:flex;gap:5px"><button class="btn btn-sm" style="background:#4caf50;color:#fff;font-size:10px;padding:3px 8px" onclick="approveUser('${k}','${esc(v.email||'')}')">승인</button><button class="btn btn-sm" style="background:#f44336;color:#fff;font-size:10px;padding:3px 8px" onclick="rejectUser('${k}')">거부</button></div></div>`).join(''):'<p style="font-size:12px;color:#aaa">승인 대기 중인 사용자가 없습니다.</p>';
+  }
+  // 승인된 목록
+  const al=document.getElementById('approved-users-list');
+  if(al){
+    const items=Object.entries(approvedData);
+    al.innerHTML=items.length?items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#e8f5e9;border-radius:8px;margin-bottom:4px;font-size:12px"><span>✅ ${esc(v.email||k)}</span><button class="btn btn-sm" style="background:#757575;color:#fff;font-size:10px;padding:2px 7px" onclick="revokeUser('${k}')">취소</button></div>`).join(''):'<p style="font-size:12px;color:#aaa">승인된 사용자가 없습니다.</p>';
+  }
+}
+function addAdmin(){
+  const email=document.getElementById('new-admin-email').value.trim();
+  if(!email){showToast('⚠️ 이메일을 입력하세요.');return;}
+  const admins=Object.values(adminsData).filter(Boolean);
+  if(admins.length>=2){showToast('⚠️ 관리자는 최대 2명입니다.');return;}
+  const key='admin'+(Date.now()%10000);
+  dbSet(`${DB}/admins/${key}`,email);
+  document.getElementById('new-admin-email').value='';
+  showToast('✅ 관리자 추가 완료');
+}
+function removeAdmin(email){
+  if(!confirm(`${email} 관리자를 삭제하시겠습니까?`))return;
+  const key=Object.keys(adminsData).find(k=>adminsData[k]===email);
+  if(key)window.__fbi.remove(window.__fbi.ref(`${DB}/admins/${key}`));
+}
+function approveUser(key,email){
+  dbSet(`${DB}/approvedUsers/${key}`,{email,approvedAt:Date.now()});
+  window.__fbi.remove(window.__fbi.ref(`${DB}/pendingUsers/${key}`));
+  showToast(`✅ ${email} 승인 완료`);
+}
+function rejectUser(key){
+  window.__fbi.remove(window.__fbi.ref(`${DB}/pendingUsers/${key}`));
+  showToast('사용자 거부 완료');
+}
+function revokeUser(key){
+  if(!confirm('승인을 취소하시겠습니까?'))return;
+  window.__fbi.remove(window.__fbi.ref(`${DB}/approvedUsers/${key}`));
+}
+
+// ════════════════════════════════════════════
 // PWA
 // ════════════════════════════════════════════
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
@@ -2381,6 +2719,7 @@ function _doStart(){
     document.getElementById('setup-screen').style.display='none';
     setStatus('online','Firebase 실시간 연결됨');
     appInit();
+    initAuth();
     return;
   }
   const saved=localStorage.getItem('fb_cfg_integrated')||localStorage.getItem('fb_config');
@@ -2388,12 +2727,12 @@ function _doStart(){
     try{
       const c=JSON.parse(saved);
       if(c.apiKey&&c.databaseURL){
-        // Firebase 모듈이 아직 초기화 중일 수 있으므로 짧게 대기
         setTimeout(()=>{
           if(window.__firebaseReady){
             isFirebase=true;
             document.getElementById('setup-screen').style.display='none';
             setStatus('online','Firebase 실시간 연결됨');
+            initAuth();
           } else {
             document.getElementById('setup-screen').style.display='none';
             setStatus('offline','Firebase 미연결 — config 확인 필요');
