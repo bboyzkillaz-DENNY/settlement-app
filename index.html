@@ -358,79 +358,80 @@ body.role-pending .readonly-banner{display:block;}
   </div>
   <div style="background:#fff;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:13px;overflow:hidden">
     <div class="sub-tabs" id="monthly-sub-tabs">
-      <div class="sub-tab active" onclick="switchSubTab('monthly','invoice')">청구서</div>
-      <div class="sub-tab" onclick="switchSubTab('monthly','person')">개인 지급</div>
-      <div class="sub-tab" onclick="switchSubTab('monthly','biz')">업체 지급</div>
+      <div id="monthly-inv-tabs" style="display:contents"></div>
     </div>
-    <!-- 청구서 -->
+    <!-- 정산서 탭 내부 전체 컨테이너 -->
     <div id="monthly-invoice" class="sub-tab-content active">
-      <div style="padding:14px" id="invoice-wrap"></div>
-    </div>
-    <!-- 개인 -->
-    <div id="monthly-person" class="sub-tab-content">
-      <div class="filter-bar">
-        <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('person','month',this.value)" id="flt-p-month"><option value="">월 전체</option></select>
-        <select onchange="applyFilter('person','code',this.value)" id="flt-p-code"><option value="">코드 전체</option></select>
-        <select onchange="applyFilter('person','category',this.value)" id="flt-p-cat"><option value="">세부항목 전체</option></select>
-        <input type="text" id="flt-p-name" placeholder="이름" oninput="applyFilter('person','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:70px;flex:1">
-        <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('person')">초기화</button>
+      <!-- 내부 서브탭 네비 (JS로 렌더링) -->
+      <div id="inv-inner-nav"></div>
+      <!-- 개인 지급 (기본 숨김) -->
+      <div id="monthly-person" style="display:none">
+        <div class="filter-bar">
+          <span class="filter-label">필터:</span>
+          <select onchange="applyFilter('person','month',this.value)" id="flt-p-month"><option value="">월 전체</option></select>
+          <select onchange="applyFilter('person','code',this.value)" id="flt-p-code"><option value="">코드 전체</option></select>
+          <select onchange="applyFilter('person','category',this.value)" id="flt-p-cat"><option value="">세부항목 전체</option></select>
+          <input type="text" id="flt-p-name" placeholder="이름" oninput="applyFilter('person','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:70px;flex:1">
+          <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('person')">초기화</button>
+        </div>
+        <div class="sel-toolbar" id="sel-person">
+          <span id="selc-person">0행 선택</span>
+          <button class="btn btn-excel btn-sm" onclick="exportSel('person')">📥 엑셀</button>
+          <button class="btn btn-danger btn-sm" onclick="delSel('person')">🗑 삭제</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="clearSel('person')">✕</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data-table" style="min-width:1200px">
+            <thead><tr>
+              <th class="cbc"><input type="checkbox" id="chk-person" onchange="toggleAll('person',this.checked)"></th>
+              <th>월</th><th>항목</th><th>세부항목</th><th>이름</th><th>주민번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
+              <th>공급가액</th><th>세액3.3%<span class="auto-badge">자동</span></th><th>예술인보험<span class="auto-badge">자동</span></th><th>실지급액<span class="auto-badge">자동</span></th>
+              <th>비고</th><th>삭제</th>
+            </tr></thead>
+            <tbody id="body-person"></tbody>
+            <tfoot><tr class="total-r">
+              <td></td><td colspan="8" style="text-align:center">총 계</td>
+              <td class="ac" id="pt-sup">0</td><td class="ac" id="pt-tax">0</td><td class="ac" id="pt-ins">0</td><td class="ac" id="pt-net">0</td>
+              <td colspan="2"></td>
+            </tr></tfoot>
+          </table>
+        </div>
       </div>
-      <div class="sel-toolbar" id="sel-person">
-        <span id="selc-person">0행 선택</span>
-        <button class="btn btn-excel btn-sm" onclick="exportSel('person')">📥 엑셀</button>
-        <button class="btn btn-danger btn-sm" onclick="delSel('person')">🗑 삭제</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="clearSel('person')">✕</button>
+      <!-- 업체 지급 (기본 숨김) -->
+      <div id="monthly-biz" style="display:none">
+        <div class="filter-bar">
+          <span class="filter-label">필터:</span>
+          <select onchange="applyFilter('biz','month',this.value)" id="flt-b-month"><option value="">월 전체</option></select>
+          <select onchange="applyFilter('biz','code',this.value)" id="flt-b-code"><option value="">코드 전체</option></select>
+          <select onchange="applyFilter('biz','category',this.value)" id="flt-b-cat"><option value="">세부항목 전체</option></select>
+          <input type="text" id="flt-b-name" placeholder="업체명" oninput="applyFilter('biz','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:75px;flex:1">
+          <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('biz')">초기화</button>
+        </div>
+        <div class="sel-toolbar" id="sel-biz">
+          <span id="selc-biz">0행 선택</span>
+          <button class="btn btn-excel btn-sm" onclick="exportSel('biz')">📥 엑셀</button>
+          <button class="btn btn-danger btn-sm" onclick="delSel('biz')">🗑 삭제</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="clearSel('biz')">✕</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data-table" style="min-width:1200px">
+            <thead><tr>
+              <th class="cbc"><input type="checkbox" id="chk-biz" onchange="toggleAll('biz',this.checked)"></th>
+              <th>월</th><th>항목</th><th>세부항목</th><th>업체명</th><th>사업자번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
+              <th>공급가액</th><th>부가세<span class="auto-badge">자동</span></th><th>고용보험료</th><th>실지급액<span class="auto-badge">자동</span></th>
+              <th>비고</th><th>삭제</th>
+            </tr></thead>
+            <tbody id="body-biz"></tbody>
+            <tfoot><tr class="total-r">
+              <td></td><td colspan="8" style="text-align:center">총 계</td>
+              <td class="ac" id="bt-sup">0</td><td class="ac" id="bt-vat">0</td><td class="ac" id="bt-tax">0</td><td class="ac" id="bt-net">0</td>
+              <td colspan="2"></td>
+            </tr></tfoot>
+          </table>
+        </div>
       </div>
-      <div class="tbl-wrap">
-        <table class="data-table" style="min-width:1200px">
-          <thead><tr>
-            <th class="cbc"><input type="checkbox" id="chk-person" onchange="toggleAll('person',this.checked)"></th>
-            <th>월</th><th>항목</th><th>세부항목</th><th>이름</th><th>주민번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
-            <th>공급가액</th><th>세액3.3%<span class="auto-badge">자동</span></th><th>예술인보험<span class="auto-badge">자동</span></th><th>실지급액<span class="auto-badge">자동</span></th>
-            <th>비고</th><th>삭제</th>
-          </tr></thead>
-          <tbody id="body-person"></tbody>
-          <tfoot><tr class="total-r">
-            <td></td><td colspan="8" style="text-align:center">총 계</td>
-            <td class="ac" id="pt-sup">0</td><td class="ac" id="pt-tax">0</td><td class="ac" id="pt-ins">0</td><td class="ac" id="pt-net">0</td>
-            <td colspan="2"></td>
-          </tr></tfoot>
-        </table>
-      </div>
-    </div>
-    <!-- 업체 -->
-    <div id="monthly-biz" class="sub-tab-content">
-      <div class="filter-bar">
-        <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('biz','month',this.value)" id="flt-b-month"><option value="">월 전체</option></select>
-        <select onchange="applyFilter('biz','code',this.value)" id="flt-b-code"><option value="">코드 전체</option></select>
-        <select onchange="applyFilter('biz','category',this.value)" id="flt-b-cat"><option value="">세부항목 전체</option></select>
-        <input type="text" id="flt-b-name" placeholder="업체명" oninput="applyFilter('biz','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:75px;flex:1">
-        <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('biz')">초기화</button>
-      </div>
-      <div class="sel-toolbar" id="sel-biz">
-        <span id="selc-biz">0행 선택</span>
-        <button class="btn btn-excel btn-sm" onclick="exportSel('biz')">📥 엑셀</button>
-        <button class="btn btn-danger btn-sm" onclick="delSel('biz')">🗑 삭제</button>
-        <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="clearSel('biz')">✕</button>
-      </div>
-      <div class="tbl-wrap">
-        <table class="data-table" style="min-width:1200px">
-          <thead><tr>
-            <th class="cbc"><input type="checkbox" id="chk-biz" onchange="toggleAll('biz',this.checked)"></th>
-            <th>월</th><th>항목</th><th>세부항목</th><th>업체명</th><th>사업자번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
-            <th>공급가액</th><th>부가세<span class="auto-badge">자동</span></th><th>고용보험료</th><th>실지급액<span class="auto-badge">자동</span></th>
-            <th>비고</th><th>삭제</th>
-          </tr></thead>
-          <tbody id="body-biz"></tbody>
-          <tfoot><tr class="total-r">
-            <td></td><td colspan="8" style="text-align:center">총 계</td>
-            <td class="ac" id="bt-sup">0</td><td class="ac" id="bt-vat">0</td><td class="ac" id="bt-tax">0</td><td class="ac" id="bt-net">0</td>
-            <td colspan="2"></td>
-          </tr></tfoot>
-        </table>
-      </div>
+      <!-- 정산서 요약 (기본 표시) -->
+      <div id="invoice-wrap" style="padding:14px;display:block"></div>
     </div>
   </div>
 </div>
@@ -442,39 +443,46 @@ body.role-pending .readonly-banner{display:block;}
   <div class="card" style="margin-bottom:0;border-radius:12px 12px 0 0">
     <div class="card-header" style="background:linear-gradient(135deg,#880e4f,#ad1457)">🎭 출연료 정산
       <div style="display:flex;gap:6px">
-        <button class="btn btn-add btn-sm" onclick="addActorRow()">+ 추가</button>
+        <button class="btn btn-add btn-sm" id="btn-actor-add" style="display:none" onclick="addActorRow()">+ 추가</button>
         <button class="btn btn-excel btn-sm" onclick="exportActorSheet()">📥 엑셀</button>
       </div>
     </div>
   </div>
   <div style="background:#fff;border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:13px;overflow:hidden">
+    <!-- 청구서 탭 (invoice tabs) -->
     <div class="sub-tabs" id="actor-sub-tabs">
-      <div class="sub-tab active" onclick="switchActorTab('주연')">주연</div>
-      <div class="sub-tab" onclick="switchActorTab('조연')">조연</div>
-      <div class="sub-tab" onclick="switchActorTab('단역')">단역</div>
-      <div class="sub-tab" onclick="switchActorTab('무술')">무술</div>
+      <div id="actor-inv-tabs" style="display:contents"></div>
     </div>
-    <div class="filter-bar">
-      <span class="filter-label">필터:</span>
-      <select onchange="applyFilter('actor','month',this.value)" id="flt-ac-month"><option value="">월 전체</option></select>
-      <select onchange="applyFilter('actor','code',this.value)" id="flt-ac-code"><option value="">코드 전체</option></select>
-      <input type="text" id="flt-ac-role" placeholder="배역명" oninput="applyFilter('actor','role',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:80px;flex:1">
-      <select onchange="applyFilter('actor','union',this.value)" id="flt-ac-union"><option value="">조합원 전체</option><option value="true">조합원</option><option value="false">비조합원</option></select>
-      <select onchange="applyFilter('actor','type',this.value)" id="flt-ac-type"><option value="">구분 전체</option><option>원징</option><option>세계</option></select>
-      <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('actor')">초기화</button>
-    </div>
-    <div class="sel-toolbar" id="sel-actor">
-      <span id="selc-actor">0행 선택</span>
-      <button class="btn btn-excel btn-sm" onclick="exportSel('actor')">📥 엑셀</button>
-      <button class="btn btn-danger btn-sm" onclick="delSel('actor')">🗑 삭제</button>
-      <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="clearSel('actor')">✕</button>
-    </div>
-    <div class="tbl-wrap">
-      <table class="data-table" id="actor-table" style="min-width:1900px">
-        <thead id="actor-thead"></thead>
-        <tbody id="body-actor"></tbody>
-        <tfoot id="actor-tfoot"></tfoot>
-      </table>
+    <div id="actor-invoice-main">
+      <!-- 내부 서브탭 네비 (JS로 렌더링) -->
+      <div id="actor-inv-inner-nav"></div>
+      <!-- 청구서 요약 (기본 표시) -->
+      <div id="actor-invoice-wrap" style="padding:14px;display:block"></div>
+      <!-- 출연료 테이블 (등급 선택 시 표시) -->
+      <div id="actor-grade-content" style="display:none">
+        <div class="filter-bar">
+          <span class="filter-label">필터:</span>
+          <select onchange="applyFilter('actor','month',this.value)" id="flt-ac-month"><option value="">월 전체</option></select>
+          <select onchange="applyFilter('actor','code',this.value)" id="flt-ac-code"><option value="">코드 전체</option></select>
+          <input type="text" id="flt-ac-role" placeholder="배역명" oninput="applyFilter('actor','role',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:80px;flex:1">
+          <select onchange="applyFilter('actor','union',this.value)" id="flt-ac-union"><option value="">조합원 전체</option><option value="true">조합원</option><option value="false">비조합원</option></select>
+          <select onchange="applyFilter('actor','type',this.value)" id="flt-ac-type"><option value="">구분 전체</option><option>원징</option><option>세계</option></select>
+          <button class="btn btn-sm" style="background:#eee;color:#555" onclick="clearFilter('actor')">초기화</button>
+        </div>
+        <div class="sel-toolbar" id="sel-actor">
+          <span id="selc-actor">0행 선택</span>
+          <button class="btn btn-excel btn-sm" onclick="exportSel('actor')">📥 엑셀</button>
+          <button class="btn btn-danger btn-sm" onclick="delSel('actor')">🗑 삭제</button>
+          <button class="btn btn-sm" style="background:rgba(255,255,255,.2);color:#fff" onclick="clearSel('actor')">✕</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="data-table" id="actor-table" style="min-width:1900px">
+            <thead id="actor-thead"></thead>
+            <tbody id="body-actor"></tbody>
+            <tfoot id="actor-tfoot"></tfoot>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -483,14 +491,16 @@ body.role-pending .readonly-banner{display:block;}
      TAB 4: 법인카드정산 (동적)
 ══════════════════════════════════════ -->
 <div id="tab-corp" class="tab-content">
-  <div id="corp-tabs-wrap"></div><!-- 동적 생성 -->
+  <div id="corp-inv-bar"></div><!-- 청구서 탭 (JS 렌더링) -->
+  <div id="corp-tabs-wrap"></div><!-- 카드 탭 (동적 생성) -->
 </div>
 
 <!-- ══════════════════════════════════════
      TAB 5: 선급금정산 (동적)
 ══════════════════════════════════════ -->
 <div id="tab-adv" class="tab-content">
-  <div id="adv-tabs-wrap"></div><!-- 동적 생성 -->
+  <div id="adv-inv-bar"></div><!-- 정산서 탭 (JS 렌더링) -->
+  <div id="adv-tabs-wrap"></div><!-- 카드 탭 (동적 생성) -->
 </div>
 
 <!-- ══════════════════════════════════════
@@ -545,19 +555,121 @@ body.role-pending .readonly-banner{display:block;}
     </div>
   </div>
   <div class="card">
-    <div class="card-header">선급금 설정
-      <button class="btn btn-add btn-sm" onclick="addCardUser('선급금')">+ 사용자 추가</button>
-    </div>
+    <div class="card-header">📑 월정산 설정</div>
     <div class="card-body">
-      <div id="card-user-list-선급금"></div>
+      <p style="font-size:12px;color:#888;margin-bottom:10px">월별/차수별 정산서 탭을 만들어 개인지급·업체지급을 분리 관리하세요</p>
+      <div id="inv-tab-list"></div>
+      <div style="display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap">
+        <select id="new-inv-month" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
+          <option value="0">전체 월</option>
+          <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+          <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+          <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+          <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+        </select>
+        <input id="new-inv-seq" value="1차" placeholder="차수 (예: 1차, 2차, 최종)" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;width:150px">
+        <button class="btn btn-add btn-sm" onclick="addInvoiceTab()">+ 탭 추가</button>
+      </div>
     </div>
   </div>
   <div class="card">
-    <div class="card-header">법인카드 설정
-      <button class="btn btn-add btn-sm" onclick="addCardUser('법인카드')">+ 사용자 추가</button>
-    </div>
+    <div class="card-header">🎭 출연료 설정</div>
     <div class="card-body">
-      <div id="card-user-list-법인카드"></div>
+      <!-- 청구서 탭 섹션 -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
+          <span style="font-size:13px;font-weight:700;color:#880e4f">📑 청구서 탭</span>
+        </div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">월별/차수별 출연료 청구서 탭을 만드세요</p>
+        <div id="actor-inv-tab-list"></div>
+        <div style="display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <select id="new-actor-inv-month" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
+            <option value="0">전체 월</option>
+            <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+            <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+            <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+          </select>
+          <input id="new-actor-inv-seq" value="1차" placeholder="차수 (예: 1차, 2차, 최종)" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;width:150px">
+          <button class="btn btn-add btn-sm" onclick="addActorInvTab()">+ 탭 추가</button>
+        </div>
+      </div>
+      <!-- 등급 관리 섹션 -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
+          <span style="font-size:13px;font-weight:700;color:#880e4f">🎬 출연 등급</span>
+        </div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">상위 2개 등급은 주연급(회당출연료×횟수), 나머지는 단역급(추가수당 포함)으로 처리됩니다.</p>
+        <div id="actor-grade-list"></div>
+        <div style="display:flex;gap:6px;margin-top:12px;align-items:center">
+          <input id="new-actor-grade" placeholder="등급명 입력 (예: 특별출연)" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;flex:1" onkeydown="if(event.key==='Enter')addActorGrade()">
+          <button class="btn btn-add btn-sm" onclick="addActorGrade()">+ 등급 추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">💰 선급금 설정</div>
+    <div class="card-body">
+      <!-- 정산서 탭 섹션 -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
+          <span style="font-size:13px;font-weight:700;color:#1b5e20">📑 정산서 탭</span>
+        </div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">월별/차수별 정산서 탭을 만드세요</p>
+        <div id="adv-inv-tab-list"></div>
+        <div style="display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <select id="new-adv-inv-month" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
+            <option value="0">전체 월</option>
+            <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+            <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+            <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+          </select>
+          <input id="new-adv-inv-seq" value="1차" placeholder="차수 (예: 1차, 2차, 최종)" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;width:150px">
+          <button class="btn btn-add btn-sm" onclick="addAdvInvTab()">+ 탭 추가</button>
+        </div>
+      </div>
+      <!-- 카드 사용자 섹션 -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
+          <span style="font-size:13px;font-weight:700;color:#1b5e20">👤 사용자</span>
+          <button class="btn btn-add btn-sm" onclick="addCardUser('선급금')">+ 사용자 추가</button>
+        </div>
+        <div id="card-user-list-선급금"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">💳 법인카드 설정</div>
+    <div class="card-body">
+      <!-- 청구서 탭 섹션 -->
+      <div style="margin-bottom:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
+          <span style="font-size:13px;font-weight:700;color:#1a237e">📑 청구서 탭</span>
+        </div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px">월별/차수별 청구서 탭을 만드세요</p>
+        <div id="corp-inv-tab-list"></div>
+        <div style="display:flex;gap:6px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <select id="new-corp-inv-month" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
+            <option value="0">전체 월</option>
+            <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
+            <option value="4">4월</option><option value="5">5월</option><option value="6">6월</option>
+            <option value="7">7월</option><option value="8">8월</option><option value="9">9월</option>
+            <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+          </select>
+          <input id="new-corp-inv-seq" value="1차" placeholder="차수 (예: 1차, 2차, 최종)" style="padding:7px 10px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;width:150px">
+          <button class="btn btn-add btn-sm" onclick="addCorpInvTab()">+ 탭 추가</button>
+        </div>
+      </div>
+      <!-- 카드 사용자 섹션 -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
+          <span style="font-size:13px;font-weight:700;color:#1a237e">👤 카드 사용자</span>
+          <button class="btn btn-add btn-sm" onclick="addCardUser('법인카드')">+ 사용자 추가</button>
+        </div>
+        <div id="card-user-list-법인카드"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -642,21 +754,35 @@ let appSettings = {
   advanceMids:['선급금집행','현장경비','스태프비','장소비','장비비','기타'],
   advanceMinors:['현금지급','계좌이체','카드결제','기타'],
   banks:['신한은행','국민은행','기업은행','하나은행','우리은행','농협은행','카카오뱅크','토스뱅크'],
+  actorGrades:['주연','조연','단역','무술'],
   actorRoles_주연:['주인공','히로인','남주','여주'],
   actorRoles_조연:['형사','의사','변호사','친구'],
   actorRoles_단역:['행인','손님','경찰관'],
   actorRoles_무술:['무술지도','액션스턴트'],
   settlementInfo:{prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'},
+  invoiceTabs:[{id:'inv1',month:0,seq:'1차'}],
+  actorInvTabs:[{id:'ainv1',month:0,seq:'1차'}],
+  corpInvTabs:[{id:'cinv1',month:0,seq:'1차'}],
+  advInvTabs:[{id:'advinv1',month:0,seq:'1차'}],
 };
 let projectInfo = {name:'TV조선 드라마 프로젝트',company:'주식회사 티엠이 그룹',manager:'홍승철',episodes:12,year:2025,startMonth:1,opMonths:12};
 let personData={}, bizData={}, cardData={}, transferData={}, actorData={};
 let isFirebase=false, demoMode=false;
+let _cardListeners=new Set(); // 중복 Firebase 리스너 방지
 let saveTimer={}, pwaPrompt=null;
 let filters={person:{},biz:{},transfer:{},actor:{}};
 let selected={person:new Set(),biz:new Set(),transfer:new Set(),actor:new Set()};
 let currentCardModal=null;
 let currentTab='final', currentMonthlySubTab='invoice';
+let currentInvTab='inv1';
+let currentInvInner='summary'; // invoice 내 정산서/개인/업체 서브탭
+let currentInvCfg={month:0,seq:'1차',id:'inv1'}; // 현재 선택된 invoice 탭 설정
 let currentActorGrade='주연';
+let currentActorInvTab='ainv1';
+let currentActorInvInner='summary'; // 출연료 내 청구서/등급 서브탭
+let currentActorInvCfg={month:0,seq:'1차',id:'ainv1'};
+let currentCorpInvTab='cinv1';
+let currentCorpInvCfg={month:0,seq:'1차',id:'cinv1'};
 
 // ════════════════════════════════════════════
 // Firebase helpers
@@ -685,6 +811,10 @@ function appInit(){
   renderCustomSections();
   renderTagSettings();
   renderPersonTable(); renderBizTable(); renderActorTable(); refreshTransferTable(); renderFinal();
+  buildInvoiceTabs(); renderInvTabList(); renderInvInnerNav();
+  buildActorInvTabs(); renderActorInvTabList(); renderActorInvInnerNav(); renderActorGradeList();
+  buildCorpInvTabs(); renderCorpInvTabList();
+  buildAdvInvTabs(); renderAdvInvTabList();
   updateModalCodeSelect(); updateModalMidSelects();
   if(isFirebase){
     dbListen('projectInfo',d=>{if(d){projectInfo=d;applyProjectInfo();}});
@@ -694,7 +824,7 @@ function appInit(){
     dbListen('businesses',d=>{bizData=d||{};renderBizTable();renderFinal();if(currentMonthlySubTab==='invoice')renderInvoice();});
     dbListen('actors',d=>{actorData=d||{};renderActorTable();renderFinal();});
     dbListen('transfer',d=>{transferData=d||{};refreshTransferTable();renderFinal();});
-    appSettings.cards.forEach(c=>dbListen(`cards/${c.id}`,d=>{cardData[c.id]=d||{};refreshCardTable(c.id);renderFinal();}));
+    ensureCardListeners();
     setupPresence(); setStatus('online','Firebase 실시간 연결됨');
   }
   applyProjectInfo();
@@ -706,18 +836,36 @@ function loadLocalSettings(){
 }
 function mergeSettings(d){
   if(d.cards)appSettings.cards=d.cards;
-  ['personCats','bizCats','cardMids','cardMinors','advanceMids','advanceMinors','banks','actorRoles_주연','actorRoles_조연','actorRoles_단역','actorRoles_무술'].forEach(k=>{if(d[k])appSettings[k]=d[k];});
+  if(d.actorGrades)appSettings.actorGrades=d.actorGrades;
+  const roleKeys=(d.actorGrades||appSettings.actorGrades||[]).map(g=>`actorRoles_${g}`);
+  ['personCats','bizCats','cardMids','cardMinors','advanceMids','advanceMinors','banks',...roleKeys].forEach(k=>{if(d[k])appSettings[k]=d[k];});
   if(d.customMonthlySections)appSettings.customMonthlySections=d.customMonthlySections;
   if(d.customActorSections)appSettings.customActorSections=d.customActorSections;
   (d.customMonthlySections||[]).concat(d.customActorSections||[]).forEach(s=>{if(d[s.key])appSettings[s.key]=d[s.key];});
   if(d.settlementInfo)appSettings.settlementInfo=d.settlementInfo;
+  if(d.invoiceTabs)appSettings.invoiceTabs=d.invoiceTabs;
+  if(d.actorInvTabs)appSettings.actorInvTabs=d.actorInvTabs;
+  if(d.corpInvTabs)appSettings.corpInvTabs=d.corpInvTabs;
+  if(d.advInvTabs)appSettings.advInvTabs=d.advInvTabs;
 }
 function rebuildAll(){
   appSettings.cards.forEach(c=>{if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};});
   buildCorpTabs();buildAdvTabs(); renderCardUserList(); renderCustomSections(); renderTagSettings();
   renderPersonTable(); renderBizTable(); renderActorTable(); refreshTransferTable(); renderFinal();
-  renderInvoice();
+  buildInvoiceTabs(); renderInvTabList(); renderInvInnerNav();
+  buildActorInvTabs(); renderActorInvTabList(); renderActorInvInnerNav(); renderActorGradeList();
+  buildCorpInvTabs(); renderCorpInvTabList();
+  buildAdvInvTabs(); renderAdvInvTabList();
   updateModalCodeSelect(); updateModalMidSelects();
+  ensureCardListeners(); // Firebase: 새 카드에 대한 리스너 등록
+}
+function ensureCardListeners(){
+  if(!isFirebase)return;
+  appSettings.cards.forEach(c=>{
+    if(_cardListeners.has(c.id))return; // 이미 등록된 카드는 스킵
+    _cardListeners.add(c.id);
+    dbListen(`cards/${c.id}`,d=>{cardData[c.id]=d||{};refreshCardTable(c.id);renderFinal();});
+  });
 }
 function applyProjectInfo(){
   _set('s-projname',projectInfo.name||'');_set('s-company',projectInfo.company||'');
@@ -751,45 +899,113 @@ function switchTab(id){
   const el=document.getElementById(`tab-${id}`);if(el)el.classList.add('active');
   if(id==='final')renderFinal();
   if(id==='monthly'&&currentMonthlySubTab==='invoice')renderInvoice();
-  if(id==='corp'){const defC=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드')[0]?.id||'';if(defC)switchCorpTab(currentCorpTab&&currentCorpTab!=='corp-settlement'&&currentCorpTab!=='corp-transfer'?currentCorpTab:defC);}
-  if(id==='adv'){switchAdvTab(currentAdvTab||'adv-settlement');}
+  if(id==='corp'){buildCorpInvTabs();switchCorpTab(currentCorpTab&&currentCorpTab!=='corp-settlement'&&currentCorpTab!=='corp-transfer'?currentCorpTab:'corp-invoice');}
+  if(id==='adv'){buildAdvInvTabs();switchAdvTab(currentAdvTab&&currentAdvTab!=='adv-settlement'&&currentAdvTab!=='adv-transfer'?currentAdvTab:'adv-invoice');}
 }
 function switchSubTab(group,id){
+  // monthly 그룹의 person/biz는 이제 내부 서브탭으로 처리 → switchInvInner 사용
+  if(group==='monthly'&&(id==='person'||id==='biz')){switchInvInner(id);return;}
   currentMonthlySubTab=id;
   document.querySelectorAll(`#${group}-sub-tabs .sub-tab`).forEach(t=>t.classList.remove('active'));
   const bt=[...document.querySelectorAll(`#${group}-sub-tabs .sub-tab`)].find(t=>t.getAttribute('onclick')===`switchSubTab('${group}','${id}')`);
   if(bt)bt.classList.add('active');
   document.querySelectorAll(`#tab-${group} .sub-tab-content`).forEach(c=>c.classList.remove('active'));
   const el=document.getElementById(`${group}-${id}`);if(el)el.classList.add('active');
-  if(group==='monthly'){
-    const addBtn=document.getElementById('btn-monthly-add');
-    if(addBtn)addBtn.style.display=(id==='invoice')?'none':'inline-flex';
-    if(id==='invoice')renderInvoice();
-  }
 }
 function addMonthlyRow(){
-  if(currentMonthlySubTab==='person')addPersonRow();
-  else if(currentMonthlySubTab==='biz')addBizRow();
+  if(currentInvInner==='person')addPersonRow();
+  else if(currentInvInner==='biz')addBizRow();
 }
-function renderInvoice(){
+// ── 정산서 탭 헬퍼 ──
+function invLabel(t){
+  const mStr=t.month?`${t.month}월`:'전체';
+  return `${mStr} ${t.seq||'1차'} 청구`;
+}
+function monthlyInvLabel(t){
+  const mStr=t.month?`${t.month}월`:'전체';
+  return `${mStr} ${t.seq||'1차'} 정산`;
+}
+function actorInvLabel(t){
+  const mStr=t.month?`${t.month}월`:'전체';
+  return `${mStr} ${t.seq||'1차'} 정산`;
+}
+function advInvLabel(t){
+  const mStr=t.month?`${t.month}월`:'전체';
+  return `${mStr} ${t.seq||'1차'} 정산`;
+}
+function buildInvoiceTabs(){
+  const cont=document.getElementById('monthly-inv-tabs');if(!cont)return;
+  const tabs=appSettings.invoiceTabs||[];
+  if(!tabs.find(t=>t.id===currentInvTab)&&tabs.length)currentInvTab=tabs[0].id;
+  cont.innerHTML=tabs.map(t=>`<div class="sub-tab${t.id===currentInvTab&&currentMonthlySubTab==='invoice'?' active':''}" onclick="switchInvTab('${t.id}')">${esc(monthlyInvLabel(t))}</div>`).join('');
+}
+function switchInvTab(id){
+  currentInvTab=id;
+  currentMonthlySubTab='invoice';
+  document.querySelectorAll('#monthly-sub-tabs .sub-tab').forEach(t=>t.classList.remove('active'));
+  const bt=[...document.querySelectorAll('#monthly-sub-tabs .sub-tab')].find(t=>t.getAttribute('onclick')===`switchInvTab('${id}')`);
+  if(bt)bt.classList.add('active');
+  document.querySelectorAll('#tab-monthly .sub-tab-content').forEach(c=>c.classList.remove('active'));
+  document.getElementById('monthly-invoice')?.classList.add('active');
+  currentInvCfg=(appSettings.invoiceTabs||[]).find(t=>t.id===id)||{month:0,seq:'1차',id};
+  switchInvInner(currentInvInner||'summary');
+}
+function switchInvInner(type){
+  currentInvInner=type;
+  // 세 영역 표시/숨김
+  const pw=document.getElementById('monthly-person');
+  const bw=document.getElementById('monthly-biz');
+  const iw=document.getElementById('invoice-wrap');
+  if(pw)pw.style.display=type==='person'?'block':'none';
+  if(bw)bw.style.display=type==='biz'?'block':'none';
+  if(iw)iw.style.display=type==='summary'?'block':'none';
+  // + 추가 버튼
+  const addBtn=document.getElementById('btn-monthly-add');
+  if(addBtn)addBtn.style.display=(type==='person'||type==='biz')?'inline-flex':'none';
+  // 월 필터 자동 적용
+  const m=+(currentInvCfg?.month||0);
+  if(type==='person'){
+    const s=document.getElementById('flt-p-month');
+    if(s){s.value=m||'';applyFilter('person','month',m?String(m):'');}
+  } else if(type==='biz'){
+    const s=document.getElementById('flt-b-month');
+    if(s){s.value=m||'';applyFilter('biz','month',m?String(m):'');}
+  } else if(type==='summary'){
+    renderInvoice();
+  }
+  renderInvInnerNav();
+}
+function renderInvInnerNav(){
+  const nav=document.getElementById('inv-inner-nav');if(!nav)return;
+  const tabs=[{id:'summary',label:'📋 정산서'},{id:'person',label:'개인 지급'},{id:'biz',label:'업체 지급'}];
+  nav.innerHTML=`<div style="display:flex;border-bottom:2px solid #e8eaf6;background:#f8f9ff;padding:0 4px">
+    ${tabs.map(t=>`<div onclick="switchInvInner('${t.id}')" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:${currentInvInner===t.id?'#3949ab':'#888'};border-bottom:3px solid ${currentInvInner===t.id?'#3949ab':'transparent'};margin-bottom:-2px;white-space:nowrap">${t.label}</div>`).join('')}
+  </div>`;
+}
+function renderInvoice(cfg){
+  if(cfg)currentInvCfg=cfg;
+  const thisCfg=currentInvCfg||{month:0,seq:'1차'};
   const wrap=document.getElementById('invoice-wrap');if(!wrap)return;
   const proj=projectInfo.name||'드라마';
   const company=projectInfo.company||'';
   const manager=projectInfo.manager||'';
   const today=new Date().toLocaleDateString('ko-KR');
-  // 개인 + 업체 합산
+  const mFilter=+thisCfg.month||0;
+  const n0=v=>(v||0).toLocaleString('ko-KR');
+  // 개인 + 업체 합산 (청구서는 전체 요약)
   const rows=[];
   Object.values(personData||{}).forEach(r=>{
+    if(mFilter&&+r.month!==mFilter)return;
     const sup=+r.supply||0,tax=calcTax(sup),ins=calcIns(sup),net=calcPersonNet(sup);
-    rows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat:0,tax:tax,ins:ins,net:net,type:'person'});
+    rows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat:0,tax,ins,net,type:'person'});
   });
   Object.values(bizData||{}).forEach(r=>{
+    if(mFilter&&+r.month!==mFilter)return;
     const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0,net=calcBizNet(sup,vat,tax);
-    rows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat:vat,tax:tax,ins:0,net:net,type:'biz'});
+    rows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat,tax,ins:0,net,type:'biz'});
   });
   const totalNet=rows.reduce((a,r)=>a+r.net,0);
   const totalSupply=rows.reduce((a,r)=>a+r.supply,0);
-  // 카테고리별 그룹
   const cats=[...new Set(rows.map(r=>r.cat))];
   let bodyHtml='';
   cats.forEach(cat=>{
@@ -797,42 +1013,64 @@ function renderInvoice(){
     cRows.forEach((r,i)=>{
       bodyHtml+=`<tr>
         ${i===0?`<td rowspan="${cRows.length}" style="text-align:center;font-weight:600;background:#f5f6fa">${esc(cat)}</td>`:''}
-        <td>${esc(r.name)}</td>
-        <td style="color:#666;font-size:11px">${esc(r.sub)}</td>
-        <td class="ac">${r.supply?r.supply.toLocaleString('ko-KR'):'-'}</td>
-        <td class="ac">${r.vat?r.vat.toLocaleString('ko-KR'):'-'}</td>
-        <td class="ac">${r.tax?r.tax.toLocaleString('ko-KR'):'-'}</td>
-        <td class="ac">${r.ins?r.ins.toLocaleString('ko-KR'):'-'}</td>
-        <td class="ac" style="font-weight:600">${r.net.toLocaleString('ko-KR')}</td>
+        <td>${esc(r.name)}</td><td style="color:#666;font-size:11px">${esc(r.sub)}</td>
+        <td class="ac">${n0(r.supply)}</td><td class="ac">${n0(r.vat)}</td>
+        <td class="ac">${n0(r.tax)}</td><td class="ac">${n0(r.ins)}</td>
+        <td class="ac" style="font-weight:600">${n0(r.net)}</td>
       </tr>`;
     });
   });
-  if(!rows.length)bodyHtml=`<tr><td colspan="8" class="empty-state">개인/업체 지급 내역이 없습니다.</td></tr>`;
+  if(!rows.length)bodyHtml=`<tr><td colspan="8" class="empty-state">지급 내역이 없습니다.</td></tr>`;
+  const tabLabel=monthlyInvLabel(thisCfg);
   wrap.innerHTML=`
     <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
       <div><span style="color:#888;font-weight:600">제작사</span><br><b>${esc(company)}</b></div>
       <div><span style="color:#888;font-weight:600">프로젝트명</span><br><b>${esc(proj)}</b></div>
-      <div><span style="color:#888;font-weight:600">작성일자</span><br><b>${today}</b></div>
+      <div><span style="color:#888;font-weight:600">정산 구분</span><br><b style="color:#1a237e">${esc(tabLabel)}</b></div>
       <div><span style="color:#888;font-weight:600">담당자</span><br><b>${esc(manager)}</b></div>
-      <div><span style="color:#888;font-weight:600">총 청구금액</span><br><b style="color:#1a237e;font-size:14px">${totalNet.toLocaleString('ko-KR')} 원</b></div>
+      <div><span style="color:#888;font-weight:600">작성일자</span><br><b>${today}</b></div>
+      <div><span style="color:#888;font-weight:600">총 정산금액</span><br><b style="color:#1a237e;font-size:14px">${n0(totalNet)} 원</b></div>
     </div>
-    <div class="tbl-wrap">
-    <table class="data-table" style="min-width:900px">
-      <thead><tr>
-        <th>항목</th><th>이름/업체명</th><th>세부항목</th>
-        <th>지급금액</th><th>부가세</th><th>원천세</th><th>예술인고용보험</th><th>실지급액</th>
-      </tr></thead>
+    <div class="tbl-wrap"><table class="data-table" style="min-width:900px">
+      <thead><tr><th>항목</th><th>이름/업체명</th><th>세부항목</th><th>지급금액</th><th>부가세</th><th>원천세</th><th>예술인고용보험</th><th>실지급액</th></tr></thead>
       <tbody>${bodyHtml}</tbody>
       <tfoot><tr class="total-r">
         <td colspan="3" style="text-align:center">합 계</td>
-        <td class="ac">${totalSupply.toLocaleString('ko-KR')}</td>
-        <td class="ac">${rows.reduce((a,r)=>a+r.vat,0).toLocaleString('ko-KR')}</td>
-        <td class="ac">${rows.reduce((a,r)=>a+r.tax,0).toLocaleString('ko-KR')}</td>
-        <td class="ac">${rows.reduce((a,r)=>a+r.ins,0).toLocaleString('ko-KR')}</td>
-        <td class="ac" style="font-weight:700">${totalNet.toLocaleString('ko-KR')}</td>
+        <td class="ac">${n0(totalSupply)}</td>
+        <td class="ac">${n0(rows.reduce((a,r)=>a+r.vat,0))}</td>
+        <td class="ac">${n0(rows.reduce((a,r)=>a+r.tax,0))}</td>
+        <td class="ac">${n0(rows.reduce((a,r)=>a+r.ins,0))}</td>
+        <td class="ac" style="font-weight:700">${n0(totalNet)}</td>
       </tr></tfoot>
-    </table>
-    </div>`;
+    </table></div>`;
+}
+// ── 정산서 탭 관리 (설정) ──
+function addInvoiceTab(){
+  const month=+(document.getElementById('new-inv-month')?.value||0);
+  const seq=(document.getElementById('new-inv-seq')?.value||'1차').trim()||'1차';
+  const id='inv'+Date.now();
+  if(!appSettings.invoiceTabs)appSettings.invoiceTabs=[];
+  appSettings.invoiceTabs.push({id,month,seq});
+  persistSettings();buildInvoiceTabs();renderInvTabList();
+  switchInvTab(id);
+}
+function removeInvoiceTab(id){
+  if((appSettings.invoiceTabs||[]).length<=1){alert('최소 1개의 정산서 탭이 필요합니다.');return;}
+  appSettings.invoiceTabs=(appSettings.invoiceTabs||[]).filter(t=>t.id!==id);
+  if(currentInvTab===id)currentInvTab=appSettings.invoiceTabs[0]?.id||'inv1';
+  persistSettings();buildInvoiceTabs();renderInvTabList();
+  if(currentMonthlySubTab==='invoice')switchInvTab(currentInvTab);
+}
+function renderInvTabList(){
+  const el=document.getElementById('inv-tab-list');if(!el)return;
+  const tabs=appSettings.invoiceTabs||[];
+  if(!tabs.length){el.innerHTML='<p style="font-size:12px;color:#aaa">정산서 탭이 없습니다.</p>';return;}
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${tabs.map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f5f6fa;border-radius:8px;font-size:12px">
+      <span style="flex:1;font-weight:600">${esc(monthlyInvLabel(t))}</span>
+      <span style="color:#888">${t.month?t.month+'월':'전체 월'} · 개인+업체</span>
+      <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="removeInvoiceTab('${t.id}')">✕</button>
+    </div>`).join('')}</div>`;
 }
 
 // ════════════════════════════════════════════
@@ -875,20 +1113,175 @@ function calcActor(r){
 // ════════════════════════════════════════════
 // 출연료 서브탭
 // ════════════════════════════════════════════
-function switchActorTab(grade){
-  currentActorGrade=grade;
+function switchActorTab(grade){switchActorInvInner(grade);}
+
+// ── 출연료 정산서 탭 시스템 ──
+function buildActorInvTabs(){
+  const cont=document.getElementById('actor-inv-tabs');if(!cont)return;
+  const tabs=appSettings.actorInvTabs||[];
+  if(!tabs.find(t=>t.id===currentActorInvTab)&&tabs.length)currentActorInvTab=tabs[0].id;
+  cont.innerHTML=tabs.map(t=>`<div class="sub-tab${t.id===currentActorInvTab?' active':''}" onclick="switchActorInvTab('${t.id}')">${esc(actorInvLabel(t))}</div>`).join('');
+}
+function switchActorInvTab(id){
+  currentActorInvTab=id;
   document.querySelectorAll('#actor-sub-tabs .sub-tab').forEach(t=>t.classList.remove('active'));
-  const bt=[...document.querySelectorAll('#actor-sub-tabs .sub-tab')].find(t=>t.getAttribute('onclick')===`switchActorTab('${grade}')`);
+  const bt=[...document.querySelectorAll('#actor-sub-tabs .sub-tab')].find(t=>t.getAttribute('onclick')===`switchActorInvTab('${id}')`);
   if(bt)bt.classList.add('active');
-  renderActorTable();
+  currentActorInvCfg=(appSettings.actorInvTabs||[]).find(t=>t.id===id)||{month:0,seq:'1차',id};
+  switchActorInvInner(currentActorInvInner||'summary');
+}
+function switchActorInvInner(type){
+  currentActorInvInner=type;
+  const grades=appSettings.actorGrades||['주연','조연','단역','무술'];
+  const isGrade=grades.includes(type);
+  const gw=document.getElementById('actor-grade-content');
+  const iw=document.getElementById('actor-invoice-wrap');
+  if(gw)gw.style.display=isGrade?'block':'none';
+  if(iw)iw.style.display=isGrade?'none':'block';
+  const addBtn=document.getElementById('btn-actor-add');
+  if(addBtn)addBtn.style.display=isGrade?'inline-flex':'none';
+  if(isGrade){
+    currentActorGrade=type;
+    const m=+(currentActorInvCfg?.month||0);
+    const s=document.getElementById('flt-ac-month');
+    if(s){s.value=m||'';applyFilter('actor','month',m?String(m):'');}
+    renderActorTable();
+  } else {
+    renderActorInvoice();
+  }
+  renderActorInvInnerNav();
+}
+function renderActorInvInnerNav(){
+  const nav=document.getElementById('actor-inv-inner-nav');if(!nav)return;
+  const grades=appSettings.actorGrades||['주연','조연','단역','무술'];
+  const tabs=[{id:'summary',label:'📋 정산서'},...grades.map(g=>({id:g,label:g}))];
+  nav.innerHTML=`<div style="display:flex;border-bottom:2px solid #e8eaf6;background:#f8f9ff;padding:0 4px">
+    ${tabs.map(t=>`<div onclick="switchActorInvInner('${t.id}')" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:${currentActorInvInner===t.id?'#880e4f':'#888'};border-bottom:3px solid ${currentActorInvInner===t.id?'#880e4f':'transparent'};margin-bottom:-2px;white-space:nowrap">${t.label}</div>`).join('')}
+  </div>`;
+}
+function renderActorInvoice(){
+  const wrap=document.getElementById('actor-invoice-wrap');if(!wrap)return;
+  const company=projectInfo.company||'',proj=projectInfo.name||'드라마',manager=projectInfo.manager||'';
+  const today=new Date().toLocaleDateString('ko-KR');
+  const mFilter=+(currentActorInvCfg?.month||0);
+  const n0=v=>(v||0).toLocaleString('ko-KR');
+  const tabLabel=actorInvLabel(currentActorInvCfg||{month:0,seq:'1차'});
+  const grades=appSettings.actorGrades||['주연','조연','단역','무술'];
+  const rows=[];
+  Object.values(actorData||{}).forEach(r=>{
+    if(mFilter&&+r.month!==mFilter)return;
+    const c=calcActor(r);
+    rows.push({grade:r.grade||'기타',name:r.name||'',role:r.role||'',fee:c.feeTot,deduct:c.deductions,net:c.netPay});
+  });
+  const totalNet=rows.reduce((a,r)=>a+r.net,0);
+  let bodyHtml='';
+  grades.forEach(grade=>{
+    const gRows=rows.filter(r=>r.grade===grade);
+    if(!gRows.length)return;
+    gRows.forEach((r,i)=>{
+      bodyHtml+=`<tr>
+        ${i===0?`<td rowspan="${gRows.length}" style="text-align:center;font-weight:600;background:#f5f6fa">${esc(grade)}</td>`:''}
+        <td>${esc(r.role)}</td><td>${esc(r.name)}</td>
+        <td class="ac">${n0(r.fee)}</td>
+        <td class="ac" style="color:#c62828">${n0(r.deduct)}</td>
+        <td class="ac" style="font-weight:600;color:#1a237e">${n0(r.net)}</td>
+      </tr>`;
+    });
+  });
+  if(!rows.length)bodyHtml=`<tr><td colspan="6" class="empty-state">출연료 정산 내역이 없습니다.</td></tr>`;
+  wrap.innerHTML=`
+    <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
+      <div><span style="color:#888;font-weight:600">제작사</span><br><b>${esc(company)}</b></div>
+      <div><span style="color:#888;font-weight:600">프로젝트명</span><br><b>${esc(proj)}</b></div>
+      <div><span style="color:#888;font-weight:600">정산 구분</span><br><b style="color:#880e4f">${esc(tabLabel)}</b></div>
+      <div><span style="color:#888;font-weight:600">담당자</span><br><b>${esc(manager)}</b></div>
+      <div><span style="color:#888;font-weight:600">작성일자</span><br><b>${today}</b></div>
+      <div><span style="color:#888;font-weight:600">총 실지급액</span><br><b style="color:#880e4f;font-size:14px">${n0(totalNet)} 원</b></div>
+    </div>
+    <div class="tbl-wrap"><table class="data-table" style="min-width:700px">
+      <thead><tr><th>등급</th><th>배역명</th><th>이름</th><th>출연료 합계</th><th>공제 합계</th><th>실지급액</th></tr></thead>
+      <tbody>${bodyHtml}</tbody>
+      <tfoot><tr class="total-r">
+        <td colspan="3" style="text-align:center">합 계</td>
+        <td class="ac">${n0(rows.reduce((a,r)=>a+r.fee,0))}</td>
+        <td class="ac">${n0(rows.reduce((a,r)=>a+r.deduct,0))}</td>
+        <td class="ac" style="font-weight:700">${n0(totalNet)}</td>
+      </tr></tfoot>
+    </table></div>`;
+}
+function addActorInvTab(){
+  const month=+(document.getElementById('new-actor-inv-month')?.value||0);
+  const seq=(document.getElementById('new-actor-inv-seq')?.value||'1차').trim()||'1차';
+  const id='ainv'+Date.now();
+  if(!appSettings.actorInvTabs)appSettings.actorInvTabs=[];
+  appSettings.actorInvTabs.push({id,month,seq});
+  persistSettings();buildActorInvTabs();renderActorInvTabList();
+  switchActorInvTab(id);
+}
+function removeActorInvTab(id){
+  if((appSettings.actorInvTabs||[]).length<=1){alert('최소 1개의 청구서 탭이 필요합니다.');return;}
+  appSettings.actorInvTabs=(appSettings.actorInvTabs||[]).filter(t=>t.id!==id);
+  if(currentActorInvTab===id)currentActorInvTab=appSettings.actorInvTabs[0]?.id||'ainv1';
+  persistSettings();buildActorInvTabs();renderActorInvTabList();
+  switchActorInvTab(currentActorInvTab);
+}
+function renderActorInvTabList(){
+  const el=document.getElementById('actor-inv-tab-list');if(!el)return;
+  const tabs=appSettings.actorInvTabs||[];
+  if(!tabs.length){el.innerHTML='<p style="font-size:12px;color:#aaa">청구서 탭이 없습니다.</p>';return;}
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${tabs.map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f5f6fa;border-radius:8px;font-size:12px">
+      <span style="flex:1;font-weight:600">${esc(invLabel(t))}</span>
+      <span style="color:#888">${t.month?t.month+'월':'전체 월'}</span>
+      <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="removeActorInvTab('${t.id}')">✕</button>
+    </div>`).join('')}</div>`;
 }
 
+// ── 출연료 등급 관리 ──
+function renderActorGradeList(){
+  const el=document.getElementById('actor-grade-list');if(!el)return;
+  const grades=appSettings.actorGrades||['주연','조연','단역','무술'];
+  if(!grades.length){el.innerHTML='<p style="font-size:12px;color:#aaa">등급이 없습니다.</p>';return;}
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${grades.map((g,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f5f6fa;border-radius:8px;font-size:12px">
+      <span style="width:20px;color:#aaa;font-size:11px">${i+1}</span>
+      <span style="flex:1;font-weight:600">${esc(g)}</span>
+      <span style="font-size:11px;color:#888">${i<2?'주연급':'단역급'}</span>
+      ${grades.length>1?`<button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="removeActorGrade('${esc(g)}')">✕</button>`:''}
+    </div>`).join('')}</div>`;
+}
+function addActorGrade(){
+  const inp=document.getElementById('new-actor-grade');if(!inp)return;
+  const name=inp.value.trim();if(!name){showToast('등급명을 입력하세요.');return;}
+  if(!appSettings.actorGrades)appSettings.actorGrades=['주연','조연','단역','무술'];
+  if(appSettings.actorGrades.includes(name)){showToast('이미 존재하는 등급입니다.');return;}
+  appSettings.actorGrades.push(name);
+  if(!appSettings[`actorRoles_${name}`])appSettings[`actorRoles_${name}`]=[];
+  inp.value='';
+  persistSettings();
+  renderActorGradeList();renderActorInvInnerNav();renderTagSettings();
+  showToast(`✅ "${name}" 등급이 추가됐습니다.`);
+}
+function removeActorGrade(grade){
+  const grades=appSettings.actorGrades||[];
+  if(grades.length<=1){showToast('최소 1개의 등급이 필요합니다.');return;}
+  if(!confirm(`"${grade}" 등급을 삭제하시겠습니까?\n해당 등급의 배역 목록도 삭제됩니다.`))return;
+  appSettings.actorGrades=grades.filter(g=>g!==grade);
+  delete appSettings[`actorRoles_${grade}`];
+  if(currentActorGrade===grade)currentActorGrade=appSettings.actorGrades[0]||'주연';
+  persistSettings();
+  buildActorInvTabs();renderActorGradeList();renderActorInvInnerNav();renderTagSettings();
+  switchActorInvInner(currentActorGrade);
+  showToast(`🗑 "${grade}" 등급이 삭제됐습니다.`);
+}
 // ════════════════════════════════════════════
 // 출연료 CRUD
 // ════════════════════════════════════════════
 function renderActorTable(){
-  const isSimple=(currentActorGrade==='주연'||currentActorGrade==='조연');
-  const isMid=(currentActorGrade==='단역'||currentActorGrade==='무술'); // 추가수당 있음, 정산비율 없음
+  const _ag=appSettings.actorGrades||['주연','조연','단역','무술'];
+  const _gi=_ag.indexOf(currentActorGrade);
+  const isSimple=_gi<2&&_gi>=0;
+  const isMid=!isSimple; // 추가수당 있음, 정산비율 없음
   // 헤더 렌더링
   const thead=document.getElementById('actor-thead');
   if(thead){
@@ -950,11 +1343,11 @@ function renderActorTable(){
       <td><input value="${esc(r.name||'')}" onchange="updA('${id}','name',this.value)" style="min-width:55px" placeholder="성명"></td>
       <td style="text-align:center"><input type="checkbox" ${r.union?'checked':''} onchange="updA('${id}','union',this.checked)" title="조합원 여부"></td>
       <td><select onchange="updA('${id}','type',this.value)" style="min-width:52px"><option ${r.type==='원징'?'selected':''}>원징</option><option ${r.type==='세계'?'selected':''}>세계</option></select></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.feePerEp)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','feePerEp',parseI(this.value))" style="text-align:right;min-width:78px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.feePerEp)?fmtI(r.feePerEp):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updA('${id}','feePerEp',parseI(this.value))" style="text-align:right;min-width:78px"></td>
       <td class="ac"><input type="number" value="${r.episodes||0}" onchange="updA('${id}','episodes',+this.value)" style="text-align:right;min-width:36px"></td>
       <td class="auto-c">${fmtNum(c.feeTot)}</td>`;
     if(isMid){
-      row+=`<td class="ac"><input type="text" class="num-input" value="${fmtI(r.extra)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','extra',parseI(this.value))" style="text-align:right;min-width:90px"></td>
+      row+=`<td class="ac"><input type="text" class="num-input" value="${(+r.extra)?fmtI(r.extra):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updA('${id}','extra',parseI(this.value))" style="text-align:right;min-width:90px"></td>
       <td class="auto-c">${fmtNum(c.settled)}</td>`;
     }
     const aInp=(field,val,ovKey)=>`<input type="text" class="num-input" value="${fmtI(val)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updA('${id}','${ovKey}',parseI(this.value))" style="text-align:right;width:100%;min-width:70px;background:transparent;border:none;color:#2e7d32;font-weight:600">`;
@@ -1007,10 +1400,11 @@ function delActor(id){
 }
 function exportActorSheet(){
   const wb=XLSX.utils.book_new();
-  const grades=['주연','조연','단역','무술'];
+  const grades=appSettings.actorGrades||['주연','조연','단역','무술'];
   grades.forEach(grade=>{
-    const isSimple=(grade==='주연'||grade==='조연');
-    const isMid=(grade==='단역'||grade==='무술');
+    const gi=grades.indexOf(grade);
+    const isSimple=gi<2;
+    const isMid=!isSimple;
     const gradeData=Object.values(actorData||{}).filter(r=>r.grade===grade);
     if(!gradeData.length)return;
     const baseHdr=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
@@ -1180,7 +1574,7 @@ function renderPersonTable(){
       <td><input value="${esc(r.bank)}" onchange="updP('${id}','bank',this.value)" placeholder="은행명" style="min-width:70px"></td>
       <td><input value="${esc(r.account)}" onchange="updP('${id}','account',this.value)" style="min-width:105px"></td>
       <td><input value="${esc(r.holder)}" onchange="updP('${id}','holder',this.value)" style="min-width:55px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.supply)?fmtI(r.supply):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updP('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
       <td class="auto-c"><input type="text" class="num-input" value="${fmtI(r.taxOverride!==undefined?r.taxOverride:tax)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','taxOverride',parseI(this.value))" style="text-align:right;min-width:80px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
       <td class="auto-c"><input type="text" class="num-input" value="${fmtI(r.insOverride!==undefined?r.insOverride:ins)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updP('${id}','insOverride',parseI(this.value))" style="text-align:right;min-width:80px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
       <td class="auto-c">${fmtNum((+r.supply||0)-(r.taxOverride!==undefined?r.taxOverride:tax)-(r.insOverride!==undefined?r.insOverride:ins))}</td>
@@ -1246,9 +1640,9 @@ function renderBizTable(){
       <td><input value="${esc(r.bank)}" onchange="updB('${id}','bank',this.value)" placeholder="은행명" style="min-width:70px"></td>
       <td><input value="${esc(r.account)}" onchange="updB('${id}','account',this.value)" style="min-width:105px"></td>
       <td><input value="${esc(r.holder)}" onchange="updB('${id}','holder',this.value)" style="min-width:55px"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.supply)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updB('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
-      <td class="auto-c"><input type="text" class="num-input" value="${fmtI(r.vat)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="bizData['${id}']._vatOverride=true;updB('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
-      <td class="ac"><input type="text" class="num-input" value="${fmtI(r.tax)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="updB('${id}','tax',parseI(this.value))" style="text-align:right;min-width:85px"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.supply)?fmtI(r.supply):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updB('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
+      <td class="auto-c"><input type="text" class="num-input" value="${(+r.vat)?fmtI(r.vat):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="bizData['${id}']._vatOverride=true;updB('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px;background:transparent;border:none;width:100%;color:#2e7d32;font-weight:600"></td>
+      <td class="ac"><input type="text" class="num-input" value="${(+r.tax)?fmtI(r.tax):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updB('${id}','tax',parseI(this.value))" style="text-align:right;min-width:85px"></td>
       <td class="auto-c">${fmtNum(net)}</td>
       <td><input value="${esc(r.notes)}" onchange="updB('${id}','notes',this.value)" style="min-width:80px"></td>
       <td><button class="btn btn-danger btn-sm" onclick="delBiz('${id}')">✕</button></td>
@@ -1293,26 +1687,30 @@ function buildCorpTabs(){
   const wrap=document.getElementById('corp-tabs-wrap');if(!wrap)return;
   const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
   let html=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
+  html+=`<div class="tab" id="ctab-corp-corp-invoice" onclick="switchCorpTab('corp-invoice')" style="border-bottom-color:transparent">📋 정산서</div>`;
   corpCards.forEach(c=>{html+=`<div class="tab" id="ctab-corp-${c.id}" onclick="switchCorpTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
   html+=`</div></div>`;
+  html+=`<div data-corp-panel id="cpanel-corp-invoice" style="display:none"></div>`;
   corpCards.forEach(c=>{
     if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};
     html+=buildCardPanel(c,false).replace('<div id="cpanel-','<div data-corp-panel id="cpanel-');
   });
   wrap.innerHTML=html;
-  // 기본 탭: 첫 번째 법인카드 사용자
-  const defTab=corpCards[0]?.id||'';
-  if(defTab)switchCorpTab(currentCorpTab&&currentCorpTab!=='corp-settlement'&&currentCorpTab!=='corp-transfer'?currentCorpTab:defTab);
+  buildCorpInvTabs();
+  const defTab=corpCards[0]?.id||'corp-invoice';
+  switchCorpTab(currentCorpTab&&currentCorpTab!=='corp-settlement'&&currentCorpTab!=='corp-transfer'?currentCorpTab:'corp-invoice');
   corpCards.forEach(c=>refreshCardTable(c.id));
 }
 function buildAdvTabs(){
   const wrap=document.getElementById('adv-tabs-wrap');if(!wrap)return;
   const advCards=appSettings.cards.filter(c=>c.type==='선급금');
   let html=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
+  html+=`<div class="tab" id="ctab-adv-adv-invoice" onclick="switchAdvTab('adv-invoice')" style="border-bottom-color:transparent">📋 정산서</div>`;
   html+=`<div class="tab" id="ctab-adv-settlement" onclick="switchAdvTab('adv-settlement')" style="border-bottom-color:transparent">정산서</div>`;
   advCards.forEach(c=>{html+=`<div class="tab" id="ctab-adv-${c.id}" onclick="switchAdvTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
   html+=`<div class="tab" id="ctab-adv-transfer" onclick="switchAdvTab('adv-transfer')" style="border-bottom-color:transparent">계좌이체</div>`;
   html+=`</div></div>`;
+  html+=`<div data-adv-panel id="cpanel-adv-invoice" style="display:none"></div>`;
   if(!advCards.length){html+=`<div style="padding:40px;text-align:center;color:#aaa;font-size:13px">선급금 사용자가 없습니다.<br>설정 탭에서 선급금 사용자를 추가해 주세요.</div>`;}
   advCards.forEach(c=>{
     if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};
@@ -1323,9 +1721,285 @@ function buildAdvTabs(){
   // 선급금 정산서 패널
   html+=buildAdvSettlementPanel();
   wrap.innerHTML=html;
-  switchAdvTab(currentAdvTab||'adv-settlement');
+  buildAdvInvTabs();
+  switchAdvTab(currentAdvTab&&currentAdvTab!=='adv-settlement'&&currentAdvTab!=='adv-transfer'?currentAdvTab:'adv-invoice');
   advCards.forEach(c=>refreshCardTable(c.id));
   refreshTransferTable();
+}
+// ── 선급금 정산서 탭 시스템 ──
+function buildAdvInvTabs(){
+  const bar=document.getElementById('adv-inv-bar');if(!bar)return;
+  const tabs=appSettings.advInvTabs||[];
+  if(!tabs.find(t=>t.id===currentAdvInvTab)&&tabs.length)currentAdvInvTab=tabs[0].id;
+  bar.innerHTML=`<div class="sub-tabs" style="border-radius:0;box-shadow:none;border-bottom:2px solid #e8eaf6;background:#fff">
+    ${tabs.map(t=>`<div class="sub-tab${t.id===currentAdvInvTab?' active':''}" onclick="switchAdvInvTab('${t.id}')">${esc(advInvLabel(t))}</div>`).join('')}
+  </div>`;
+}
+function switchAdvInvTab(id){
+  currentAdvInvTab=id;
+  currentAdvInvCfg=(appSettings.advInvTabs||[]).find(t=>t.id===id)||{month:0,seq:'1차',id};
+  buildAdvInvTabs();
+  const m=+(currentAdvInvCfg.month||0);
+  appSettings.cards.filter(c=>c.type==='선급금').forEach(card=>{
+    const sel=document.getElementById(`flt-${card.id}-month`);
+    if(sel){sel.value=m||'';applyFilter(card.id,'month',m||0);}
+  });
+  switchAdvTab('adv-invoice');
+}
+function renderAdvInvoice(){
+  const panel=document.getElementById('cpanel-adv-invoice');if(!panel)return;
+  const mFilter=+(currentAdvInvCfg?.month||0);
+  const n0=v=>(v||0).toLocaleString('ko-KR');
+  const tabLabel=advInvLabel(currentAdvInvCfg||{month:0,seq:'1차'});
+  const company=projectInfo.company||'',proj=projectInfo.name||'드라마',manager=projectInfo.manager||'';
+  const today=new Date().toLocaleDateString('ko-KR');
+  const advCards=appSettings.cards.filter(c=>c.type==='선급금');
+  // 카드(사람)별 소항목 집계
+  const cardSections=[];
+  let grandTotal=0;
+  advCards.forEach(card=>{
+    const minorMap={};
+    Object.values(cardData[card.id]||{}).forEach(r=>{
+      if(mFilter&&+r.month!==mFilter)return;
+      const key=r.minor||'(소항목 없음)';
+      if(!minorMap[key])minorMap[key]=0;
+      minorMap[key]+=+r.amount||0;
+    });
+    const keys=Object.keys(minorMap);
+    if(!keys.length)return;
+    const subTotal=keys.reduce((a,k)=>a+minorMap[k],0);
+    grandTotal+=subTotal;
+    cardSections.push({card,minorMap,keys,subTotal});
+  });
+  const colors=['#1b5e20','#1a237e','#4a148c','#b71c1c','#e65100','#006064'];
+  let sectionsHtml='';
+  if(!cardSections.length){
+    sectionsHtml=`<div style="padding:30px;text-align:center;color:#aaa;font-size:13px">선급금 지출 내역이 없습니다.</div>`;
+  } else {
+    cardSections.forEach(({card,minorMap,keys,subTotal},idx)=>{
+      const color=colors[idx%colors.length];
+      const pct=grandTotal?Math.round(subTotal/grandTotal*100):0;
+      sectionsHtml+=`
+      <div style="margin-bottom:18px;border:1.5px solid #e8eaf6;border-radius:12px;overflow:hidden">
+        <div style="background:${color};color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:14px">💰 ${esc(card.tabLabel)}</span>
+          <span style="font-size:11px;opacity:.85">${esc(card.person||'')} · 비중 ${pct}%</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f5f6fa;font-size:12px;color:#666">
+            <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">소항목</th>
+            <th style="padding:8px 14px;text-align:right;font-weight:600;border-bottom:1px solid #e8eaf6">합계금액</th>
+          </tr></thead>
+          <tbody>
+            ${keys.map(k=>`<tr style="border-bottom:1px solid #f0f0f0">
+              <td style="padding:9px 14px;font-size:13px">${esc(k)}</td>
+              <td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:600">${n0(minorMap[k])} 원</td>
+            </tr>`).join('')}
+          </tbody>
+          <tfoot><tr style="background:#f8fff8">
+            <td style="padding:9px 14px;font-weight:700;font-size:13px;color:${color}">소 계</td>
+            <td style="padding:9px 14px;text-align:right;font-weight:700;font-size:14px;color:${color}">${n0(subTotal)} 원</td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+    });
+  }
+  panel.innerHTML=`<div class="card">
+    <div class="card-header" style="background:linear-gradient(135deg,#1b5e20,#2e7d32)">📋 선급금 정산서
+      <span style="font-size:12px;opacity:.8;font-weight:400">${esc(tabLabel)}</span>
+    </div>
+    <div style="padding:14px">
+      <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
+        <div><span style="color:#888;font-weight:600">제작사</span><br><b>${esc(company)}</b></div>
+        <div><span style="color:#888;font-weight:600">프로젝트명</span><br><b>${esc(proj)}</b></div>
+        <div><span style="color:#888;font-weight:600">정산 구분</span><br><b style="color:#1b5e20">${esc(tabLabel)}</b></div>
+        <div><span style="color:#888;font-weight:600">담당자</span><br><b>${esc(manager)}</b></div>
+        <div><span style="color:#888;font-weight:600">작성일자</span><br><b>${today}</b></div>
+        <div><span style="color:#888;font-weight:600">총 정산금액</span><br><b style="color:#1b5e20;font-size:14px">${n0(grandTotal)} 원</b></div>
+      </div>
+      ${sectionsHtml}
+      ${cardSections.length>1?`<div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);border-radius:10px;padding:13px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <span style="color:#fff;font-weight:700;font-size:14px">💰 전체 합계</span>
+        <span style="color:#fff;font-weight:800;font-size:18px">${n0(grandTotal)} 원</span>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+function addAdvInvTab(){
+  const month=+(document.getElementById('new-adv-inv-month')?.value||0);
+  const seq=(document.getElementById('new-adv-inv-seq')?.value||'1차').trim()||'1차';
+  const id='advinv'+Date.now();
+  if(!appSettings.advInvTabs)appSettings.advInvTabs=[];
+  appSettings.advInvTabs.push({id,month,seq});
+  persistSettings();buildAdvTabs();
+  switchAdvInvTab(id);renderAdvInvTabList();
+}
+function removeAdvInvTab(id){
+  if((appSettings.advInvTabs||[]).length<=1){alert('최소 1개의 정산서 탭이 필요합니다.');return;}
+  appSettings.advInvTabs=(appSettings.advInvTabs||[]).filter(t=>t.id!==id);
+  if(currentAdvInvTab===id)currentAdvInvTab=appSettings.advInvTabs[0]?.id||'advinv1';
+  persistSettings();buildAdvTabs();
+  renderAdvInvTabList();
+}
+function renderAdvInvTabList(){
+  const el=document.getElementById('adv-inv-tab-list');if(!el)return;
+  const tabs=appSettings.advInvTabs||[];
+  if(!tabs.length){el.innerHTML='<p style="font-size:12px;color:#aaa">정산서 탭이 없습니다.</p>';return;}
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${tabs.map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f5f6fa;border-radius:8px;font-size:12px">
+      <span style="flex:1;font-weight:600">${esc(advInvLabel(t))}</span>
+      <span style="color:#888">${t.month?t.month+'월':'전체 월'}</span>
+      <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="removeAdvInvTab('${t.id}')">✕</button>
+    </div>`).join('')}</div>`;
+}
+// ── 법인카드 정산서 탭 시스템 ──
+function buildCorpInvTabs(){
+  const bar=document.getElementById('corp-inv-bar');if(!bar)return;
+  const tabs=appSettings.corpInvTabs||[];
+  if(!tabs.find(t=>t.id===currentCorpInvTab)&&tabs.length)currentCorpInvTab=tabs[0].id;
+  bar.innerHTML=`<div class="sub-tabs" style="border-radius:0;box-shadow:none;border-bottom:2px solid #e8eaf6;background:#fff">
+    ${tabs.map(t=>`<div class="sub-tab${t.id===currentCorpInvTab?' active':''}" onclick="switchCorpInvTab('${t.id}')">${esc(invLabel(t))}</div>`).join('')}
+  </div>`;
+}
+function switchCorpInvTab(id){
+  currentCorpInvTab=id;
+  currentCorpInvCfg=(appSettings.corpInvTabs||[]).find(t=>t.id===id)||{month:0,seq:'1차',id};
+  buildCorpInvTabs();
+  // 모든 법인카드에 월 필터 자동 적용
+  const m=+(currentCorpInvCfg.month||0);
+  appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드').forEach(card=>{
+    const sel=document.getElementById(`flt-${card.id}-month`);
+    if(sel){sel.value=m||'';applyFilter(card.id,'month',m||0);}
+  });
+  switchCorpTab('corp-invoice');
+}
+function renderCorpInvoice(){
+  const panel=document.getElementById('cpanel-corp-invoice');if(!panel)return;
+  const mFilter=+(currentCorpInvCfg?.month||0);
+  const n0=v=>(v||0).toLocaleString('ko-KR');
+  const tabLabel=invLabel(currentCorpInvCfg||{month:0,seq:'1차'});
+  const company=projectInfo.company||'',proj=projectInfo.name||'드라마',manager=projectInfo.manager||'';
+  const today=new Date().toLocaleDateString('ko-KR');
+  const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
+
+  // 카드(사람)별 소항목 집계
+  const cardSections=[];
+  let grandTotal=0;
+  corpCards.forEach(card=>{
+    const minorMap={};
+    Object.values(cardData[card.id]||{}).forEach(r=>{
+      if(mFilter&&+r.month!==mFilter)return;
+      const key=r.minor||'(소항목 없음)';
+      if(!minorMap[key])minorMap[key]=0;
+      minorMap[key]+=+r.amount||0;
+    });
+    const keys=Object.keys(minorMap);
+    if(!keys.length)return; // 해당 월 데이터 없으면 섹션 생략
+    const subTotal=keys.reduce((a,k)=>a+minorMap[k],0);
+    grandTotal+=subTotal;
+    cardSections.push({card,minorMap,keys,subTotal});
+  });
+
+  // 섹션 HTML 생성
+  const colors=['#1a237e','#1b5e20','#4a148c','#b71c1c','#e65100','#006064'];
+  let sectionsHtml='';
+  if(!cardSections.length){
+    sectionsHtml=`<div style="padding:30px;text-align:center;color:#aaa;font-size:13px">법인카드 지출 내역이 없습니다.</div>`;
+  } else {
+    cardSections.forEach(({card,minorMap,keys,subTotal},idx)=>{
+      const color=colors[idx%colors.length];
+      const pct=grandTotal?Math.round(subTotal/grandTotal*100):0;
+      sectionsHtml+=`
+      <div style="margin-bottom:18px;border:1.5px solid #e8eaf6;border-radius:12px;overflow:hidden">
+        <div style="background:${color};color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-weight:700;font-size:14px">💳 ${esc(card.tabLabel)}</span>
+          <span style="font-size:11px;opacity:.85">${esc(card.person||'')} · 비중 ${pct}%</span>
+        </div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:#f5f6fa;font-size:12px;color:#666">
+            <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">소항목</th>
+            <th style="padding:8px 14px;text-align:right;font-weight:600;border-bottom:1px solid #e8eaf6">합계금액</th>
+          </tr></thead>
+          <tbody>
+            ${keys.map(k=>`<tr style="border-bottom:1px solid #f0f0f0">
+              <td style="padding:9px 14px;font-size:13px">${esc(k)}</td>
+              <td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:600">${n0(minorMap[k])} 원</td>
+            </tr>`).join('')}
+          </tbody>
+          <tfoot><tr style="background:#f8f9ff">
+            <td style="padding:9px 14px;font-weight:700;font-size:13px;color:${color}">소 계</td>
+            <td style="padding:9px 14px;text-align:right;font-weight:700;font-size:14px;color:${color}">${n0(subTotal)} 원</td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+    });
+  }
+
+  panel.innerHTML=`<div class="card">
+    <div class="card-header" style="background:linear-gradient(135deg,#1a237e,#283593)">📋 법인카드 정산서
+      <span style="font-size:12px;opacity:.8;font-weight:400">${esc(tabLabel)}</span>
+    </div>
+    <div style="padding:14px">
+      <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-bottom:16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
+        <div><span style="color:#888;font-weight:600">제작사</span><br><b>${esc(company)}</b></div>
+        <div><span style="color:#888;font-weight:600">프로젝트명</span><br><b>${esc(proj)}</b></div>
+        <div><span style="color:#888;font-weight:600">청구 구분</span><br><b style="color:#1a237e">${esc(tabLabel)}</b></div>
+        <div><span style="color:#888;font-weight:600">담당자</span><br><b>${esc(manager)}</b></div>
+        <div><span style="color:#888;font-weight:600">작성일자</span><br><b>${today}</b></div>
+        <div><span style="color:#888;font-weight:600">총 청구금액</span><br><b style="color:#1a237e;font-size:14px">${n0(grandTotal)} 원</b></div>
+      </div>
+      ${sectionsHtml}
+      ${cardSections.length>1?`<div style="background:linear-gradient(135deg,#1a237e,#283593);border-radius:10px;padding:13px 18px;display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <span style="color:#fff;font-weight:700;font-size:14px">💰 전체 합계</span>
+        <span style="color:#fff;font-weight:800;font-size:18px">${n0(grandTotal)} 원</span>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+function addCorpInvTab(){
+  const month=+(document.getElementById('new-corp-inv-month')?.value||0);
+  const seq=(document.getElementById('new-corp-inv-seq')?.value||'1차').trim()||'1차';
+  const id='cinv'+Date.now();
+  if(!appSettings.corpInvTabs)appSettings.corpInvTabs=[];
+  appSettings.corpInvTabs.push({id,month,seq});
+  persistSettings();buildCorpTabs();
+  switchCorpInvTab(id);
+}
+function removeCorpInvTab(id){
+  if((appSettings.corpInvTabs||[]).length<=1){alert('최소 1개의 청구서 탭이 필요합니다.');return;}
+  appSettings.corpInvTabs=(appSettings.corpInvTabs||[]).filter(t=>t.id!==id);
+  if(currentCorpInvTab===id)currentCorpInvTab=appSettings.corpInvTabs[0]?.id||'cinv1';
+  persistSettings();buildCorpTabs();
+  renderCorpInvTabList();
+}
+function renderCorpInvTabList(){
+  const el=document.getElementById('corp-inv-tab-list');if(!el)return;
+  const tabs=appSettings.corpInvTabs||[];
+  if(!tabs.length){el.innerHTML='<p style="font-size:12px;color:#aaa">청구서 탭이 없습니다.</p>';return;}
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px">${tabs.map(t=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#f5f6fa;border-radius:8px;font-size:12px">
+      <span style="flex:1;font-weight:600">${esc(invLabel(t))}</span>
+      <span style="color:#888">${t.month?t.month+'월':'전체 월'}</span>
+      <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="removeCorpInvTab('${t.id}')">✕</button>
+    </div>`).join('')}</div>`;
+}
+function addCorpCardTab(){
+  const newId='card'+Date.now().toString().slice(-8);
+  appSettings.cards.push({id:newId,cardNum:'',person:'',tabLabel:'신규카드',type:'법인카드'});
+  cardData[newId]={};selected[newId]=new Set();filters[newId]={};
+  persistSettings();buildCorpTabs();
+  switchCorpTab(newId);renderCardUserList();
+  showToast('📇 카드 탭이 추가됐습니다. 설정에서 탭 이름을 변경하세요.');
+}
+function removeCorpCardTab(id){
+  const card=appSettings.cards.find(c=>c.id===id);
+  const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
+  if(corpCards.length<=1){showToast('최소 1개의 카드 탭이 필요합니다.');return;}
+  if(!confirm(`"${card?.tabLabel||'이 카드'}" 탭을 삭제하시겠습니까?\n해당 카드의 지출 내역도 함께 삭제됩니다.`))return;
+  appSettings.cards=appSettings.cards.filter(c=>c.id!==id);
+  delete cardData[id];delete selected[id];delete filters[id];
+  if(currentCorpTab===id)currentCorpTab='corp-invoice';
+  persistSettings();buildCorpTabs();renderCardUserList();
 }
 function switchCorpTab(cid){
   currentCorpTab=cid;
@@ -1334,6 +2008,7 @@ function switchCorpTab(cid){
   const bt=document.getElementById(`ctab-corp-${cid}`);if(bt){bt.classList.add('active');bt.style.borderBottomColor='#1a237e';}
   wrap.querySelectorAll('[data-corp-panel]').forEach(p=>p.style.display='none');
   const pn=document.getElementById(`cpanel-${cid}`);if(pn)pn.style.display='block';
+  if(cid==='corp-invoice')renderCorpInvoice();
 }
 function switchAdvTab(cid){
   currentAdvTab=cid;
@@ -1345,6 +2020,7 @@ function switchAdvTab(cid){
   const pn=document.getElementById(panelId);if(pn)pn.style.display='block';
   if(cid==='adv-transfer')refreshTransferTable();
   if(cid==='adv-settlement')renderSettlementAdv();
+  if(cid==='adv-invoice')renderAdvInvoice();
 }
 function buildTransferPanel(){
   return `<div id="cpanel-transfer-card" style="display:none">
@@ -1692,6 +2368,8 @@ function exportSettlementAll(type){
   XLSX.writeFile(wb,fname);showToast(`📥 ${fname} 다운로드 완료!`);
 }
 let currentCardTab=null, currentCorpTab=null, currentAdvTab=null;
+let currentAdvInvTab='advinv1';
+let currentAdvInvCfg={month:0,seq:'1차',id:'advinv1'};
 function switchCardTab(cid){
   currentCardTab=cid;
   document.querySelectorAll('[id^="ctab-"]').forEach(t=>{t.classList.remove('active');t.style.borderBottomColor='transparent';});
@@ -1741,10 +2419,15 @@ function delCard(cid,id){
 }
 function addCardRow(cid){
   const d=new Date();
-  const card=appSettings.cards.find(c=>c.id===cid);
   const row={month:d.getMonth()+1,code:budgetCodes[0]?.code||100,middle:'',minor:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,detail:'',amount:0,proof:'',vendor:''};
+  // 로컬 즉시 반영 (Firebase·데모 모두)
+  const id='r'+Date.now();
+  if(!cardData[cid])cardData[cid]={};
+  cardData[cid][id]=row;
+  refreshCardTable(cid);
+  renderFinal();
+  // Firebase에도 동기화 (리스너가 받으면 ID가 달라지지만 데이터 동일)
   if(isFirebase)window.__fbi.push(window.__fbi.ref(`${DB}/cards/${cid}`),row);
-  else{const id='r'+Date.now();if(!cardData[cid])cardData[cid]={};cardData[cid][id]=row;refreshCardTable(cid);renderFinal();}
 }
 function openCardModal(cid){addCardRow(cid);}// legacy compat
 function closeCardModal(){}
@@ -1957,9 +2640,8 @@ function renderTagSettings(){
   render('advanceMids','tags-amid');render('advanceMinors','tags-amin');
   // 법인카드 항목
   render('cardMids','tags-cmid');render('cardMinors','tags-cmin');
-  // 출연료 grade별
-  render('actorRoles_주연','tags-a-주연');render('actorRoles_조연','tags-a-조연');
-  render('actorRoles_단역','tags-a-단역');render('actorRoles_무술','tags-a-무술');
+  // 출연료 grade별 (동적)
+  (appSettings.actorGrades||['주연','조연','단역','무술']).forEach(g=>render(`actorRoles_${g}`,`tags-a-${g}`));
   // 커스텀 구분
   (appSettings.customMonthlySections||[]).forEach(s=>render(s.key,'tags-'+s.key));
   (appSettings.customActorSections||[]).forEach(s=>render(s.key,'tags-'+s.key));
@@ -2024,8 +2706,10 @@ function exportSel(tid){
     sel.forEach(id=>{const r=bizData[id];if(r)rows.push([r.month,r.code,r.category,r.name,r.bizNum,r.bank,r.account,r.holder,r.supply||0,r.vat||0,r.tax||0,calcBizNet(+r.supply||0,+r.vat||0,+r.tax||0),r.notes]);});
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'업체지급');
   }else if(tid==='actor'){
-    const isSimple=(currentActorGrade==='주연'||currentActorGrade==='조연');
-    const isMid=(currentActorGrade==='단역'||currentActorGrade==='무술');
+    const _ag2=appSettings.actorGrades||['주연','조연','단역','무술'];
+    const _gi2=_ag2.indexOf(currentActorGrade);
+    const isSimple=_gi2<2&&_gi2>=0;
+    const isMid=!isSimple;
     const baseHdr=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
     const tailHdr=['부가세','조합비','소득세','주민세','고용보험(본인)','고용보험(회사)','공제합계','최종입금액','최종지출액','지급일','비고'];
     const headers=isSimple?[...baseHdr,...tailHdr]:isMid?[...baseHdr,'추가수당','정산후합계',...tailHdr]:[...baseHdr,'추가수당','정산비율','정산후합계',...tailHdr];
