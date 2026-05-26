@@ -521,11 +521,20 @@ body.role-pending .readonly-banner{display:block;}
         </div>
       </div>
       <div>
-        <h3 style="font-size:13px;font-weight:700;color:#1a237e;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #e8eaf6">사용자 승인 관리</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #e8eaf6">
+          <h3 style="font-size:13px;font-weight:700;color:#1a237e">사용자 승인 관리</h3>
+          <button class="btn btn-sm" style="background:#e8eaf6;color:#3949ab;font-size:11px" onclick="loadAdminPanel()">🔄 새로고침</button>
+        </div>
+        <!-- 이메일 직접 즉시 승인 -->
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input id="direct-approve-email" type="email" placeholder="이메일 직접 입력 → 즉시 승인" style="flex:1;padding:8px 11px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
+          <button class="btn btn-sm" style="background:#4caf50;color:#fff;white-space:nowrap" onclick="approveByEmail()">✅ 즉시 승인</button>
+        </div>
+        <h4 style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">⏳ 승인 대기</h4>
         <div id="pending-users-list"><p style="font-size:12px;color:#aaa">승인 대기 중인 사용자가 없습니다.</p></div>
         <div style="margin-top:12px">
-          <h4 style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">승인된 사용자</h4>
-          <div id="approved-users-list"></div>
+          <h4 style="font-size:12px;color:#666;margin-bottom:6px;font-weight:600">✅ 승인된 사용자 (<span id="approved-count">0</span>명)</h4>
+          <div id="approved-users-list"><p style="font-size:12px;color:#aaa">승인된 사용자가 없습니다.</p></div>
         </div>
       </div>
     </div>
@@ -915,6 +924,8 @@ function switchTab(id){
   if(id==='monthly'&&currentMonthlySubTab==='invoice')renderInvoice();
   if(id==='corp'){switchCorpTab(currentCorpTab||'corp-invoice');}
   if(id==='adv'){buildAdvInvTabs();switchAdvTab(currentAdvTab&&currentAdvTab!=='adv-settlement'&&currentAdvTab!=='adv-transfer'?currentAdvTab:'adv-invoice');}
+  // 설정 탭 진입 시 관리자 패널 데이터 자동 갱신
+  if(id==='settings'&&userRole==='admin')loadAdminPanel();
 }
 function switchSubTab(group,id){
   // monthly 그룹의 person/biz는 이제 내부 서브탭으로 처리 → switchInvInner 사용
@@ -3213,14 +3224,30 @@ function addCardRow(cid){
   const dateStr=`${yr}-${String(mn).padStart(2,'0')}-${String(dy).padStart(2,'0')}`;
   const row={month:tabMonth,code:budgetCodes[0]?.code||100,middle:'',minor:'',date:dateStr,detail:'',amount:0,proof:'',vendor:''};
   if(!cardData[cid])cardData[cid]={};
+  const _afterAdd=()=>{
+    // 📊 정산서 패널이 열려 있으면 해당 카드 탭으로 자동 이동 (편집 가능한 행 바로 보임)
+    const cipanel=document.getElementById('cpanel-corp-invoice');
+    const fromInvoice=cipanel&&cipanel.style.display!=='none';
+    if(fromInvoice){
+      // 카드 탭으로 전환 후 행 갱신 (setTimeout으로 DOM 갱신 후)
+      switchCorpTab(cid);
+      setTimeout(()=>{refreshCardTable(cid);renderFinal();
+        const tbody=document.getElementById(`body-${cid}`);
+        const last=tbody?.querySelector('tr:last-child');
+        if(last)last.querySelector('input,select')?.focus();
+      },50);
+    } else {
+      refreshCardTable(cid);
+      renderFinal();
+    }
+  };
   if(isFirebase){
-    // Firebase push key를 로컬에도 즉시 동일하게 사용 → 리스너 수신 시 중복 없음
     const ref=window.__fbi.push(window.__fbi.ref(`${DB}/cards/${cid}`),row);
     const newId=ref.key;
-    if(newId){cardData[cid][newId]=row;refreshCardTable(cid);renderFinal();}
+    if(newId){cardData[cid][newId]=row;_afterAdd();}
   } else {
     const id='r'+Date.now();
-    cardData[cid][id]=row;refreshCardTable(cid);renderFinal();
+    cardData[cid][id]=row;_afterAdd();
   }
 }
 function openCardModal(cid){addCardRow(cid);}// legacy compat
@@ -4103,10 +4130,12 @@ function doSignUp(){
   window.__fbAuth.signUp(email,pw)
     .then(cred=>{
       const emailKey=btoa(email).replace(/=/g,'');
-      // 가입 직후 즉시 로그아웃 — 승인 후에만 로그인 허용
-      window.__fbAuth.signOut().then(()=>{
-        // pending 등록은 로그아웃 후 처리 (로그인 없이 DB 쓰기 불가 시 규칙 완화 필요)
-        showLoginScreen('✅ 가입 완료! 관리자 승인 후 로그인하세요.');
+      // 로그아웃 전 pending 먼저 등록 (로그인 상태에서 DB 쓰기)
+      const pendingRef=window.__fbi.ref(`${DB}/pendingUsers/${emailKey}`);
+      window.__fbi.set(pendingRef,{email,requestedAt:Date.now()}).finally(()=>{
+        window.__fbAuth.signOut().then(()=>{
+          showLoginScreen('✅ 가입 완료! 관리자 승인 후 로그인하세요.');
+        });
       });
     })
     .catch(e=>{
@@ -4168,16 +4197,24 @@ async function _resolveRole(user){
     // 실시간 리스너 — 승인/관리자 변경 즉시 반영
     window.__fbi.onValue(window.__fbi.ref(`${DB}/approvedUsers`),s=>{
       approvedData=s.val()||{};
+      // 대기 중 사용자가 승인된 경우 즉시 사용 가능하게 전환
       if(userRole==='pending'&&approvedData[emailKey]){
         userRole='approved';applyRole('approved');
         hidePendingScreen();
-        showToast('✅ 승인되었습니다! 이용 가능합니다.');
+        showToast('✅ 승인되었습니다! 지금 바로 사용 가능합니다.');
       }
       renderAdminPanel();
     });
-    window.__fbi.onValue(window.__fbi.ref(`${DB}/admins`),s=>{adminsData=s.val()||{};renderAdminPanel();});
-    window.__fbi.onValue(window.__fbi.ref(`${DB}/pendingUsers`),s=>{pendingData=s.val()||{};renderAdminPanel();});
-    renderAdminPanel();
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/admins`),s=>{
+      adminsData=s.val()||{};
+      // 관리자로 승격된 경우 즉시 반영
+      const isNowAdmin=Object.values(adminsData).some(e=>e===user.email);
+      if(userRole!=='admin'&&isNowAdmin){userRole='admin';applyRole('admin');showToast('👑 관리자 권한이 부여됐습니다.');}
+      renderAdminPanel();
+    });
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/pendingUsers`),s=>{pendingData=s.val()||{};_renderAdminPanelUI();});
+    // 관리자인 경우 Firebase에서 직접 최신 데이터 로드 (onValue 첫 콜백보다 먼저 확실히 표시)
+    if(userRole==='admin')loadAdminPanel();
   }catch(e){
     console.error('역할 확인 실패:',e);
     document.getElementById('auth-loading').style.display='none';
@@ -4203,27 +4240,103 @@ function applyRole(role){
   if(ap)ap.style.display=(role==='admin'||role==='approved')?'block':'none';
 }
 
+// base64 key → 이메일 복호화 헬퍼 (올바른 패딩 계산)
+function _decodeEmailKey(key){
+  try{
+    const k=key.replace(/-/g,'+').replace(/_/g,'/');
+    const mod=k.length%4;
+    const padded=mod?k+'='.repeat(4-mod):k;
+    const decoded=atob(padded);
+    return decoded.includes('@')?decoded:key;
+  }catch(e){return key;}
+}
+// approvedData 엔트리에서 이메일 추출 (다양한 데이터 형태 처리)
+function _extractEmail(key,val){
+  if(val&&typeof val==='object'&&val.email)return val.email;
+  if(typeof val==='string'&&val.includes('@'))return val;
+  // key가 base64 인코딩된 이메일인 경우 복호화
+  const decoded=_decodeEmailKey(key);
+  return decoded!==key?decoded:key;
+}
+
+// 관리자 패널 데이터를 Firebase에서 직접 로드 후 렌더링
+async function loadAdminPanel(){
+  if(userRole!=='admin')return;
+  // Firebase 연결된 경우 최신 데이터 직접 fetch
+  if(window.__fbi){
+    try{
+      const [appSnap,admSnap,pendSnap]=await Promise.all([
+        window.__fbi.get(`${DB}/approvedUsers`),
+        window.__fbi.get(`${DB}/admins`),
+        window.__fbi.get(`${DB}/pendingUsers`),
+      ]);
+      approvedData=appSnap.val()||{};
+      adminsData=admSnap.val()||{};
+      pendingData=pendSnap.val()||{};
+    }catch(e){console.error('관리자 패널 데이터 로드 실패:',e);}
+  }
+  _renderAdminPanelUI();
+}
 function renderAdminPanel(){
   if(userRole!=='admin')return;
-  // 관리자 목록
+  _renderAdminPanelUI();
+}
+function _renderAdminPanelUI(){
+  // ── 관리자 목록 (최대 2명) ──
   const admList=document.getElementById('admin-list');
   if(admList){
     const admins=Object.values(adminsData).filter(Boolean);
-    admList.innerHTML=admins.map((e,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#fdecea;border-radius:8px;margin-bottom:4px;font-size:12px"><span>👑 ${esc(e)}</span><button class="btn btn-sm" style="background:#c62828;color:#fff;font-size:10px;padding:2px 7px" onclick="removeAdmin('${esc(e)}')">삭제</button></div>`).join('')||'<p style="font-size:12px;color:#aaa">등록된 관리자가 없습니다.</p>';
+    admList.innerHTML=admins.length?admins.map(e=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 11px;background:#fdecea;border-radius:8px;margin-bottom:5px;font-size:12px">
+        <span>👑 <b>${esc(e)}</b></span>
+        <button class="btn btn-sm" style="background:#c62828;color:#fff;font-size:10px;padding:2px 8px" onclick="removeAdmin('${esc(e)}')">삭제</button>
+      </div>`).join(''):'<p style="font-size:12px;color:#aaa">등록된 관리자가 없습니다.</p>';
   }
-  // 대기 목록
+  // ── 승인 대기 목록 ──
   const pl=document.getElementById('pending-users-list');
   if(pl){
-    const pending=Object.entries(pendingData).filter(([,v])=>!approvedData[Object.keys(pendingData).find(k=>pendingData[k]===v)]);
-    const items=Object.entries(pendingData).filter(([k,v])=>!approvedData[k]);
-    pl.innerHTML=items.length?items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#fff3e0;border-radius:8px;margin-bottom:5px;font-size:12px"><span>⏳ ${esc(v.email||k)}</span><div style="display:flex;gap:5px"><button class="btn btn-sm" style="background:#4caf50;color:#fff;font-size:10px;padding:3px 8px" onclick="approveUser('${k}','${esc(v.email||'')}')">승인</button><button class="btn btn-sm" style="background:#f44336;color:#fff;font-size:10px;padding:3px 8px" onclick="rejectUser('${k}')">거부</button></div></div>`).join(''):'<p style="font-size:12px;color:#aaa">승인 대기 중인 사용자가 없습니다.</p>';
+    const items=Object.entries(pendingData).filter(([k])=>!approvedData[k]);
+    pl.innerHTML=items.length?items.map(([k,v])=>{
+      const email=_extractEmail(k,v);
+      const dt=v?.requestedAt?new Date(v.requestedAt).toLocaleDateString('ko-KR'):'';
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 11px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;margin-bottom:5px;font-size:12px">
+        <span>⏳ <b>${esc(email)}</b>${dt?` <span style="color:#888;font-size:10px">(${dt})</span>`:''}
+        </span>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-sm" style="background:#43a047;color:#fff;font-size:11px;padding:3px 10px" onclick="approveUser('${k}','${esc(email)}')">✅ 승인</button>
+          <button class="btn btn-sm" style="background:#e53935;color:#fff;font-size:11px;padding:3px 10px" onclick="rejectUser('${k}')">✕ 거부</button>
+        </div>
+      </div>`;
+    }).join(''):'<p style="font-size:12px;color:#aaa">승인 대기 중인 사용자가 없습니다.</p>';
   }
-  // 승인된 목록
+  // ── 승인된 사용자 목록 ──
   const al=document.getElementById('approved-users-list');
+  const ac=document.getElementById('approved-count');
   if(al){
     const items=Object.entries(approvedData);
-    al.innerHTML=items.length?items.map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#e8f5e9;border-radius:8px;margin-bottom:4px;font-size:12px"><span>✅ ${esc(v.email||k)}</span><button class="btn btn-sm" style="background:#757575;color:#fff;font-size:10px;padding:2px 7px" onclick="revokeUser('${k}')">취소</button></div>`).join(''):'<p style="font-size:12px;color:#aaa">승인된 사용자가 없습니다.</p>';
+    if(ac)ac.textContent=items.length;
+    if(items.length){
+      al.innerHTML=items.map(([k,v])=>{
+        const email=_extractEmail(k,v);
+        const dt=v?.approvedAt?new Date(v.approvedAt).toLocaleDateString('ko-KR'):'';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 11px;background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;margin-bottom:4px;font-size:12px">
+          <span>✅ <b>${esc(email)}</b>${dt?` <span style="color:#888;font-size:10px">(${dt})</span>`:''}
+          </span>
+          <button class="btn btn-sm" style="background:#757575;color:#fff;font-size:10px;padding:2px 8px" onclick="revokeUser('${k}')">취소</button>
+        </div>`;
+      }).join('');
+    }else{
+      al.innerHTML='<p style="font-size:12px;color:#aaa">승인된 사용자가 없습니다.</p>';
+    }
   }
+}
+function approveByEmail(){
+  const email=document.getElementById('direct-approve-email')?.value.trim();
+  if(!email||!email.includes('@')){showToast('⚠️ 올바른 이메일을 입력하세요.');return;}
+  if(!window.__fbi){showToast('⚠️ Firebase 연결이 필요합니다.');return;}
+  const key=btoa(email).replace(/=/g,'');
+  approveUser(key,email);
+  document.getElementById('direct-approve-email').value='';
 }
 function addAdmin(){
   const email=document.getElementById('new-admin-email').value.trim();
