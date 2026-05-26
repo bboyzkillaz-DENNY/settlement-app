@@ -804,11 +804,13 @@ let currentCorpInvCfg={month:5,id:'cinv1'};
 // ════════════════════════════════════════════
 // Firebase helpers
 // ════════════════════════════════════════════
-function dbSet(p,v){if(!isFirebase)return;window.__fbi.set(window.__fbi.ref(`${DB}/${p}`),v);showSync();}
-function dbPush(p,v){if(!isFirebase)return null;const r=window.__fbi.push(window.__fbi.ref(`${DB}/${p}`),v);showSync();return r;}
-function dbRemove(p){if(!isFirebase)return;window.__fbi.remove(window.__fbi.ref(`${DB}/${p}`));showSync();}
-function dbUpdate(p,v){if(!isFirebase)return;window.__fbi.update(window.__fbi.ref(`${DB}/${p}`),v);showSync();}
-function dbListen(p,cb){if(!isFirebase)return;window.__fbi.onValue(window.__fbi.ref(`${DB}/${p}`),s=>cb(s.val()));}
+// DB 경로 중복 방지: dbSet('integrated/foo') 와 dbSet('foo') 모두 동일하게 처리
+function _cleanPath(p){return p.startsWith(DB+'/')?p.slice(DB.length+1):p;}
+function dbSet(p,v){if(!isFirebase)return;window.__fbi.set(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),v);showSync();}
+function dbPush(p,v){if(!isFirebase)return null;const r=window.__fbi.push(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),v);showSync();return r;}
+function dbRemove(p){if(!isFirebase)return;window.__fbi.remove(window.__fbi.ref(`${DB}/${_cleanPath(p)}`));showSync();}
+function dbUpdate(p,v){if(!isFirebase)return;window.__fbi.update(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),v);showSync();}
+function dbListen(p,cb){if(!isFirebase)return;window.__fbi.onValue(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),s=>cb(s.val()));}
 function connectFB(){
   const cfg={apiKey:_v('cfg-api'),databaseURL:_v('cfg-url'),projectId:_v('cfg-pid'),appId:_v('cfg-aid')};
   if(!cfg.apiKey||!cfg.databaseURL){alert('apiKey와 databaseURL은 필수입니다.');return;}
@@ -4194,26 +4196,31 @@ async function _resolveRole(user){
       showPendingScreen(user.email);
     }
 
-    // 실시간 리스너 — 승인/관리자 변경 즉시 반영
-    window.__fbi.onValue(window.__fbi.ref(`${DB}/approvedUsers`),s=>{
-      approvedData=s.val()||{};
-      // 대기 중 사용자가 승인된 경우 즉시 사용 가능하게 전환
+    // 실시간 리스너 — 경로별 별도 변수로 교체(replace) 방식, 누적 중복 방지
+    let _approvedC={},_approvedL={},_adminsC={},_adminsL={},_pendingC={},_pendingL={};
+    const _checkApproval=()=>{
+      approvedData={..._approvedC,..._approvedL};
       if(userRole==='pending'&&approvedData[emailKey]){
         userRole='approved';applyRole('approved');
         hidePendingScreen();
         showToast('✅ 승인되었습니다! 지금 바로 사용 가능합니다.');
       }
-      renderAdminPanel();
-    });
-    window.__fbi.onValue(window.__fbi.ref(`${DB}/admins`),s=>{
-      adminsData=s.val()||{};
-      // 관리자로 승격된 경우 즉시 반영
+      _renderAdminPanelUI();
+    };
+    const _checkAdmins=()=>{
+      adminsData={..._adminsC,..._adminsL};
       const isNowAdmin=Object.values(adminsData).some(e=>e===user.email);
       if(userRole!=='admin'&&isNowAdmin){userRole='admin';applyRole('admin');showToast('👑 관리자 권한이 부여됐습니다.');}
-      renderAdminPanel();
-    });
-    window.__fbi.onValue(window.__fbi.ref(`${DB}/pendingUsers`),s=>{pendingData=s.val()||{};_renderAdminPanelUI();});
-    // 관리자인 경우 Firebase에서 직접 최신 데이터 로드 (onValue 첫 콜백보다 먼저 확실히 표시)
+      _renderAdminPanelUI();
+    };
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/approvedUsers`),s=>{_approvedC=s.val()||{};_checkApproval();});
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/${DB}/approvedUsers`),s=>{_approvedL=s.val()||{};_checkApproval();}); // 레거시
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/admins`),s=>{_adminsC=s.val()||{};_checkAdmins();});
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/${DB}/admins`),s=>{_adminsL=s.val()||{};_checkAdmins();}); // 레거시
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/pendingUsers`),s=>{_pendingC=s.val()||{};pendingData={..._pendingC,..._pendingL};_renderAdminPanelUI();});
+    window.__fbi.onValue(window.__fbi.ref(`${DB}/${DB}/pendingUsers`),s=>{_pendingL=s.val()||{};pendingData={..._pendingC,..._pendingL};_renderAdminPanelUI();});
+
+    // 관리자인 경우 직접 fetch (두 경로 모두) + 자동 마이그레이션
     if(userRole==='admin')loadAdminPanel();
   }catch(e){
     console.error('역할 확인 실패:',e);
@@ -4260,19 +4267,47 @@ function _extractEmail(key,val){
 }
 
 // 관리자 패널 데이터를 Firebase에서 직접 로드 후 렌더링
+// 과거 경로 중복 버그(integrated/integrated/...)로 저장된 데이터도 함께 읽어 자동 마이그레이션
 async function loadAdminPanel(){
   if(userRole!=='admin')return;
-  // Firebase 연결된 경우 최신 데이터 직접 fetch
   if(window.__fbi){
     try{
-      const [appSnap,admSnap,pendSnap]=await Promise.all([
-        window.__fbi.get(`${DB}/approvedUsers`),
-        window.__fbi.get(`${DB}/admins`),
-        window.__fbi.get(`${DB}/pendingUsers`),
+      const correctBase=`${DB}`;
+      const legacyBase=`${DB}/${DB}`; // 버그로 인해 중복 저장된 경로
+      const [appSnap,admSnap,pendSnap,appLegacy,admLegacy,pendLegacy]=await Promise.all([
+        window.__fbi.get(`${correctBase}/approvedUsers`),
+        window.__fbi.get(`${correctBase}/admins`),
+        window.__fbi.get(`${correctBase}/pendingUsers`),
+        window.__fbi.get(`${legacyBase}/approvedUsers`),
+        window.__fbi.get(`${legacyBase}/admins`),
+        window.__fbi.get(`${legacyBase}/pendingUsers`),
       ]);
-      approvedData=appSnap.val()||{};
-      adminsData=admSnap.val()||{};
-      pendingData=pendSnap.val()||{};
+      const appCorrect=appSnap.val()||{};
+      const appLeg=appLegacy.val()||{};
+      const admCorrect=admSnap.val()||{};
+      const admLeg=admLegacy.val()||{};
+      const pendCorrect=pendSnap.val()||{};
+      const pendLeg=pendLegacy.val()||{};
+
+      // 두 경로 데이터 합치기
+      approvedData={...appCorrect,...appLeg};
+      adminsData={...admCorrect,...admLeg};
+      pendingData={...pendCorrect,...pendLeg};
+
+      // 잘못된 경로에 데이터가 있으면 올바른 경로로 자동 마이그레이션
+      const migrateEntries=async(legData,correctPath)=>{
+        for(const [k,v] of Object.entries(legData)){
+          await window.__fbi.set(window.__fbi.ref(`${correctBase}/${correctPath}/${k}`),v);
+          await window.__fbi.remove(window.__fbi.ref(`${legacyBase}/${correctPath}/${k}`));
+        }
+      };
+      if(Object.keys(appLeg).length){
+        migrateEntries(appLeg,'approvedUsers').catch(()=>{});
+        showToast(`🔧 승인 데이터 ${Object.keys(appLeg).length}건 경로 수정 완료`);
+      }
+      if(Object.keys(admLeg).length)migrateEntries(admLeg,'admins').catch(()=>{});
+      if(Object.keys(pendLeg).length)migrateEntries(pendLeg,'pendingUsers').catch(()=>{});
+
     }catch(e){console.error('관리자 패널 데이터 로드 실패:',e);}
   }
   _renderAdminPanelUI();
@@ -4285,7 +4320,10 @@ function _renderAdminPanelUI(){
   // ── 관리자 목록 (최대 2명) ──
   const admList=document.getElementById('admin-list');
   if(admList){
-    const admins=Object.values(adminsData).filter(Boolean);
+    // 이메일 기준 중복 제거 후 최대 2명만 표시
+    const seenAdm=new Set();const uniqueAdmins=[];
+    Object.values(adminsData).forEach(e=>{const em=typeof e==='string'?e:(e?.email||'');if(em&&!seenAdm.has(em)){seenAdm.add(em);uniqueAdmins.push(em);}});
+    const admins=uniqueAdmins.slice(0,2);
     admList.innerHTML=admins.length?admins.map(e=>`
       <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 11px;background:#fdecea;border-radius:8px;margin-bottom:5px;font-size:12px">
         <span>👑 <b>${esc(e)}</b></span>
@@ -4350,8 +4388,18 @@ function addAdmin(){
 }
 function removeAdmin(email){
   if(!confirm(`${email} 관리자를 삭제하시겠습니까?`))return;
-  const key=Object.keys(adminsData).find(k=>adminsData[k]===email);
-  if(key)window.__fbi.remove(window.__fbi.ref(`${DB}/admins/${key}`));
+  if(!window.__fbi)return;
+  // 올바른 경로 + 레거시 경로(중복 버그) 모두 삭제
+  const _del=(data,base)=>{Object.entries(data||{}).forEach(([k,v])=>{if(v===email)window.__fbi.remove(window.__fbi.ref(`${base}/admins/${k}`));});};
+  Promise.all([
+    window.__fbi.get(window.__fbi.ref(`${DB}/admins`)),
+    window.__fbi.get(window.__fbi.ref(`${DB}/${DB}/admins`)),
+  ]).then(([s1,s2])=>{
+    _del(s1.val(),DB);
+    _del(s2.val(),`${DB}/${DB}`);
+    showToast(`✅ ${email} 관리자 삭제 완료`);
+    setTimeout(loadAdminPanel,600);
+  });
 }
 function approveUser(key,email){
   dbSet(`${DB}/approvedUsers/${key}`,{email,approvedAt:Date.now()});
@@ -4364,7 +4412,11 @@ function rejectUser(key){
 }
 function revokeUser(key){
   if(!confirm('승인을 취소하시겠습니까?'))return;
+  if(!window.__fbi)return;
+  // 올바른 경로 + 레거시 경로 모두 삭제
   window.__fbi.remove(window.__fbi.ref(`${DB}/approvedUsers/${key}`));
+  window.__fbi.remove(window.__fbi.ref(`${DB}/${DB}/approvedUsers/${key}`));
+  showToast('승인 취소 완료');
 }
 
 // ════════════════════════════════════════════
