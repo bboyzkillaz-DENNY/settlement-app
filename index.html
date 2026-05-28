@@ -125,6 +125,8 @@ body{font-family:'Malgun Gothic','맑은 고딕',Arial,sans-serif;background:#f0
 .filter-bar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 13px;background:#f8f9fa;border-bottom:1px solid #e8e8e8}
 .filter-bar select{padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;flex:1;min-width:90px}
 .filter-bar select:focus{outline:none;border-color:#3949ab}
+.filter-bar input[type=text],.filter-bar input[type=date]{padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;background:#fff;flex:1;min-width:80px}
+.filter-bar input[type=text]:focus,.filter-bar input[type=date]:focus{outline:none;border-color:#3949ab}
 .filter-label{font-size:11px;color:#888;font-weight:700;white-space:nowrap}
 /* ── Selection toolbar ── */
 .sel-toolbar{display:none;background:#1a237e;color:#fff;padding:8px 13px;align-items:center;gap:8px;font-size:12px;font-weight:600;flex-wrap:wrap}
@@ -198,7 +200,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
 /* ── 권한 CSS ── */
 body.role-pending .tab-content,body.role-guest .tab-content{pointer-events:none;user-select:none;}
 body.role-pending .tabs-wrapper,body.role-guest .tabs-wrapper{pointer-events:none;}
-body.role-pending .tab[onclick="switchTab('settings')"],body.role-guest .tab[onclick="switchTab('settings'"]{opacity:.4;pointer-events:none;}
+body.role-pending .tab[onclick="switchTab('settings')"],body.role-guest .tab[onclick="switchTab('settings')"]{opacity:.4;pointer-events:none;}
 body.role-pending #tab-settings,body.role-guest #tab-settings{pointer-events:none;opacity:.5;}
 body.role-pending #tab-settings::after{content:'🔒 설정은 관리자만 수정할 수 있습니다.';display:block;text-align:center;padding:20px;color:#999;font-size:13px;}
 /* approved: 설정탭 접근 허용, admin-only 영역만 제한 */
@@ -373,7 +375,11 @@ body.role-pending .readonly-banner{display:block;}
           <select onchange="applyFilter('person','month',this.value)" id="flt-p-month"><option value="">월 전체</option></select>
           <select onchange="applyFilter('person','code',this.value)" id="flt-p-code"><option value="">코드 전체</option></select>
           <select onchange="applyFilter('person','category',this.value)" id="flt-p-cat"><option value="">세부항목 전체</option></select>
-          <input type="text" id="flt-p-name" placeholder="이름" oninput="applyFilter('person','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:70px;flex:1">
+          <input type="text" id="flt-p-name" placeholder="이름" oninput="applyFilter('person','name',this.value)">
+          <input type="text" id="flt-p-rrn" placeholder="주민번호" oninput="applyFilter('person','rrn',this.value)">
+          <select onchange="applyFilter('person','bank',this.value)" id="flt-p-bank"><option value="">은행 전체</option></select>
+          <input type="text" id="flt-p-account" placeholder="계좌번호" oninput="applyFilter('person','account',this.value)">
+          <input type="text" id="flt-p-holder" placeholder="예금주" oninput="applyFilter('person','holder',this.value)">
         </div>
         <div class="sel-toolbar" id="sel-person">
           <span id="selc-person">0행 선택</span>
@@ -405,7 +411,11 @@ body.role-pending .readonly-banner{display:block;}
           <select onchange="applyFilter('biz','month',this.value)" id="flt-b-month"><option value="">월 전체</option></select>
           <select onchange="applyFilter('biz','code',this.value)" id="flt-b-code"><option value="">코드 전체</option></select>
           <select onchange="applyFilter('biz','category',this.value)" id="flt-b-cat"><option value="">세부항목 전체</option></select>
-          <input type="text" id="flt-b-name" placeholder="업체명" oninput="applyFilter('biz','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:75px;flex:1">
+          <input type="text" id="flt-b-name" placeholder="업체명" oninput="applyFilter('biz','name',this.value)">
+          <input type="text" id="flt-b-biznum" placeholder="사업자번호" oninput="applyFilter('biz','bizNum',this.value)">
+          <select onchange="applyFilter('biz','bank',this.value)" id="flt-b-bank"><option value="">은행 전체</option></select>
+          <input type="text" id="flt-b-account" placeholder="계좌번호" oninput="applyFilter('biz','account',this.value)">
+          <input type="text" id="flt-b-holder" placeholder="예금주" oninput="applyFilter('biz','holder',this.value)">
         </div>
         <div class="sel-toolbar" id="sel-biz">
           <span id="selc-biz">0행 선택</span>
@@ -464,7 +474,8 @@ body.role-pending .readonly-banner{display:block;}
           <span class="filter-label">필터:</span>
           <select onchange="applyFilter('actor','month',this.value)" id="flt-ac-month"><option value="">월 전체</option></select>
           <select onchange="applyFilter('actor','code',this.value)" id="flt-ac-code"><option value="">코드 전체</option></select>
-          <input type="text" id="flt-ac-role" placeholder="배역명" oninput="applyFilter('actor','role',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:80px;flex:1">
+          <input type="text" id="flt-ac-role" placeholder="배역명" oninput="applyFilter('actor','role',this.value)">
+          <input type="text" id="flt-ac-name" placeholder="성명" oninput="applyFilter('actor','name',this.value)">
           <select onchange="applyFilter('actor','union',this.value)" id="flt-ac-union"><option value="">조합원 전체</option><option value="true">조합원</option><option value="false">비조합원</option></select>
           <select onchange="applyFilter('actor','type',this.value)" id="flt-ac-type"><option value="">구분 전체</option><option>원징</option><option>세계</option></select>
         </div>
@@ -1357,6 +1368,9 @@ function renderActorTable(){
     if(f.code&&+r.code!==+f.code)return false;
     if(f.month&&+r.month!==+f.month)return false;
     if(f.type&&r.type!==f.type)return false;
+    if(f.role&&!(r.role||'').toLowerCase().includes(f.role.toLowerCase()))return false;
+    if(f.name&&!(r.name||'').toLowerCase().includes(f.name.toLowerCase()))return false;
+    if(f.union!==undefined&&f.union!==''){const wantUnion=(f.union==='true');if(!!r.union!==wantUnion)return false;}
     return true;
   });
   const colCount=isSimple?22:24;
@@ -3358,6 +3372,8 @@ function getFiltered(tid){
     // 개인/업체 추가 필터
     if(f.rrn&&!(r.rrn||'').includes(f.rrn))return false;
     if(f.bank&&r.bank!==f.bank)return false;
+    if(f.account&&!(r.account||'').includes(f.account))return false;
+    if(f.holder&&!(r.holder||'').toLowerCase().includes(f.holder.toLowerCase()))return false;
     if(f.bizNum&&!(r.bizNum||'').includes(f.bizNum))return false;
     // 카드 추가 필터
     if(f.middle&&r.middle!==f.middle)return false;
