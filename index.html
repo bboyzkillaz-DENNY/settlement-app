@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="통합정산">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="data:application/manifest+json,{%22name%22:%22드라마%20통합%20정산%22,%22short_name%22:%22통합정산%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%231a237e%22,%22theme_color%22:%22%231a237e%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22}]}">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎬</text></svg>">
 <title>드라마 통합 정산 시스템</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
@@ -198,7 +198,7 @@ input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#3949ab}
 /* ── 권한 CSS ── */
 body.role-pending .tab-content,body.role-guest .tab-content{pointer-events:none;user-select:none;}
 body.role-pending .tabs-wrapper,body.role-guest .tabs-wrapper{pointer-events:none;}
-body.role-pending .tab[onclick="switchTab('settings')"],body.role-guest .tab[onclick="switchTab('settings'"]{opacity:.4;pointer-events:none;}
+body.role-pending .tab[onclick="switchTab('settings')"],body.role-guest .tab[onclick="switchTab('settings')"]{opacity:.4;pointer-events:none;}
 body.role-pending #tab-settings,body.role-guest #tab-settings{pointer-events:none;opacity:.5;}
 body.role-pending #tab-settings::after{content:'🔒 설정은 관리자만 수정할 수 있습니다.';display:block;text-align:center;padding:20px;color:#999;font-size:13px;}
 /* approved: 설정탭 접근 허용, admin-only 영역만 제한 */
@@ -623,7 +623,7 @@ body.role-pending .readonly-banner{display:block;}
   <div class="card">
     <div class="card-header">💳 법인카드 설정</div>
     <div class="card-body">
-      <!-- 법인카드 정산서 탭 섹션 -->
+      <!-- 법인카드 정산서(청구서) 탭 섹션 -->
       <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
           <span style="font-size:13px;font-weight:700;color:#1a237e">📊 정산서 탭</span>
@@ -654,7 +654,7 @@ body.role-pending .readonly-banner{display:block;}
   <div class="card">
     <div class="card-header">💰 선급금 설정</div>
     <div class="card-body">
-      <!-- 정산서 탭 섹션 -->
+      <!-- 선급금 청구서 탭 섹션 -->
       <div style="margin-bottom:20px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e8eaf6">
           <span style="font-size:13px;font-weight:700;color:#1b5e20">📑 청구서 탭</span>
@@ -738,11 +738,8 @@ const DEFAULT_BUDGET_CODES = [
   {code:2200,name:'미술비',budget:2300000000},
 ];
 const DEFAULT_CARDS = [
-  {id:'card8487',cardNum:'9410-1901-3879-8487',person:'홍승철 이사',tabLabel:'홍승철',type:'법인카드'},
-  {id:'card9944',cardNum:'9410-1901-2389-9944',person:'김상은 제작총괄',tabLabel:'김상은',type:'법인카드'},
-  {id:'card8479',cardNum:'9410-1901-3002-8479',person:'이수정 제작프로듀서',tabLabel:'이수정',type:'법인카드'},
-  {id:'card9461',cardNum:'9410-1901-2366-9461',person:'박승민 라인프로듀서',tabLabel:'박승민',type:'법인카드'},
-  {id:'cardAdv001',cardNum:'',person:'PREPRODUCTION 팀',tabLabel:'사전진행비',type:'선급금'},
+  {id:'card001',cardNum:'',person:'카드 사용자 1',tabLabel:'사용자1',type:'법인카드'},
+  {id:'cardAdv001',cardNum:'',person:'선급금 담당자',tabLabel:'사전진행비',type:'선급금'},
 ];
 
 // ════════════════════════════════════════════
@@ -783,13 +780,14 @@ let appSettings = {
     advsett2:{prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'},
     advsett3:{prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'},
   },
-  advStaffNote:'연출(성도준), 프로듀서(박채원), 제작(김상은, 이수정, 유백영, 박승민), 조연출(신대철, 경현호, 윤수희), SCR(박세진), 연출부(남정우, 박영채, 정진우), 섭외(강동석, 김택수, 추장훈), 촬영(조봉한, 정민훈), 차량(스텝버스, 연출봉고, 카메라봉고2) 총 22명',
-  advLocationNote:'서울, 인천, 고양, 양주세트 등',
+  advStaffNote:'',
+  advLocationNote:'',
 };
-let projectInfo = {name:'다음생은 없으니까요',company:'주식회사 티엠이 그룹',manager:'홍승철',episodes:12,year:2025,startMonth:1,opMonths:12};
+let projectInfo = {name:'',company:'',manager:'',episodes:16,year:new Date().getFullYear(),startMonth:1,opMonths:12};
 let personData={}, bizData={}, cardData={}, transferData={}, actorData={};
 let isFirebase=false, demoMode=false;
 let _cardListeners=new Set(); // 중복 Firebase 리스너 방지
+const _fbUnsubscribers=[]; // Firebase onValue 해제 함수 목록
 let saveTimer={}, pwaPrompt=null;
 let filters={person:{},biz:{},transfer:{},actor:{}};
 let selected={person:new Set(),biz:new Set(),transfer:new Set(),actor:new Set()};
@@ -804,6 +802,7 @@ let currentActorInvInner='summary'; // 출연료 내 정산서/등급 서브탭
 let currentActorInvCfg={month:0,seq:'1차',id:'ainv1'};
 let currentCorpInvTab='cinv1';
 let currentCorpInvCfg={month:5,id:'cinv1'};
+let currentCorpInvCardIds=[]; // 현재 선택된 탭의 cardIds 전용 상태 (renderCorpInvoice에서만 읽음)
 
 // ════════════════════════════════════════════
 // Firebase helpers
@@ -814,7 +813,8 @@ function dbSet(p,v){if(!isFirebase)return;window.__fbi.set(window.__fbi.ref(`${D
 function dbPush(p,v){if(!isFirebase)return null;const r=window.__fbi.push(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),v);showSync();return r;}
 function dbRemove(p){if(!isFirebase)return;window.__fbi.remove(window.__fbi.ref(`${DB}/${_cleanPath(p)}`));showSync();}
 function dbUpdate(p,v){if(!isFirebase)return;window.__fbi.update(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),v);showSync();}
-function dbListen(p,cb){if(!isFirebase)return;window.__fbi.onValue(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),s=>cb(s.val()));}
+function dbListen(p,cb){if(!isFirebase)return;const unsub=window.__fbi.onValue(window.__fbi.ref(`${DB}/${_cleanPath(p)}`),s=>cb(s.val()));_fbUnsubscribers.push(unsub);}
+function _clearAllListeners(){_fbUnsubscribers.forEach(fn=>{try{fn();}catch(e){}});_fbUnsubscribers.length=0;_cardListeners.clear();}
 function connectFB(){
   const cfg={apiKey:_v('cfg-api'),databaseURL:_v('cfg-url'),projectId:_v('cfg-pid'),appId:_v('cfg-aid')};
   if(!cfg.apiKey||!cfg.databaseURL){alert('apiKey와 databaseURL은 필수입니다.');return;}
@@ -879,8 +879,23 @@ function mergeSettings(d){
   try{if(d.advSettTabs!=null)   appSettings.advSettTabs=_toArr(d.advSettTabs).filter(Boolean);}catch(e){}
   try{if(d.corpSettTabs!=null)  appSettings.corpSettTabs=_toArr(d.corpSettTabs).filter(Boolean);}catch(e){}
   try{if(d.actorInvTabs!=null)  appSettings.actorInvTabs=_toArr(d.actorInvTabs).filter(Boolean).map(t=>({...t,grades:t.grades?_toArr(t.grades).filter(Boolean):undefined}));}catch(e){}
-  try{if(d.corpInvTabs!=null)   appSettings.corpInvTabs=_toArr(d.corpInvTabs).filter(Boolean).map(t=>({...t,cardIds:t.cardIds?_toArr(t.cardIds).filter(Boolean):undefined}));}catch(e){}
-  try{if(d.advInvTabs!=null)    appSettings.advInvTabs=_toArr(d.advInvTabs).filter(Boolean).map(t=>({...t,cardIds:t.cardIds?_toArr(t.cardIds).filter(Boolean):undefined}));}catch(e){}
+  try{if(d.corpInvTabs!=null){
+    const _prevCorpTabs=(appSettings.corpInvTabs||[]);
+    // Firebase에 cardIds 없는 구버전 데이터가 오면 로컬 cardIds를 보존
+    appSettings.corpInvTabs=_toArr(d.corpInvTabs).filter(Boolean).map(t=>{
+      const _local=_prevCorpTabs.find(lt=>lt&&lt.id===t.id);
+      const cardIds=t.cardIds?_toArr(t.cardIds).filter(Boolean):(_local&&_local.cardIds?_local.cardIds:undefined);
+      return {...t,cardIds};
+    });
+  }}catch(e){}
+  try{if(d.advInvTabs!=null){
+    const _prevAdvTabs=(appSettings.advInvTabs||[]);
+    appSettings.advInvTabs=_toArr(d.advInvTabs).filter(Boolean).map(t=>{
+      const _local=_prevAdvTabs.find(lt=>lt&&lt.id===t.id);
+      const cardIds=t.cardIds?_toArr(t.cardIds).filter(Boolean):(_local&&_local.cardIds?_local.cardIds:undefined);
+      return {...t,cardIds};
+    });
+  }}catch(e){}
   try{if(d.advSettTabs!=null)   appSettings.advSettTabs=_toArr(d.advSettTabs).filter(Boolean);}catch(e){}
   try{if(d.corpSettTabs!=null)  appSettings.corpSettTabs=_toArr(d.corpSettTabs).filter(Boolean);}catch(e){}
 }
@@ -1140,8 +1155,11 @@ function calcTrNet(sup,vat,tax,ins){return (sup||0)+(vat||0)-(tax||0)-(ins||0);}
 function calcActor(r){
   const feePerEp=+r.feePerEp||0, episodes=+r.episodes||0, extra=+r.extra||0;
   const feeTot=feePerEp*episodes;
-  const isSimple=(r.grade==='주연'||r.grade==='조연');
-  const isMid=(r.grade==='단역'||r.grade==='무술');
+  // ✅ 인덱스 기반 판단 — renderActorTable·importActorExcel과 동일 (커스텀 등급 대응)
+  const _grades=appSettings.actorGrades||['주연','조연','단역','무술'];
+  const _gi=_grades.indexOf(r.grade);
+  const isSimple=_gi>=0&&_gi<2;  // 상위 2개 등급 = 주연급 (회당출연료×횟수)
+  const isMid=_gi>=2;             // 나머지 = 단역급 (추가수당 포함)
   const ratio=(!isSimple&&!isMid)?(+r.ratio||1):1;
   const settled=isSimple?feeTot:(feeTot+extra)*ratio;
   const _insComp=Math.floor((settled*0.75*0.008)/10)*10;
@@ -1889,7 +1907,12 @@ function delBiz(id){
 function buildCardTabs(){buildCorpTabs();buildAdvTabs();}
 function buildCorpTabs(){
   const wrap=document.getElementById('corp-tabs-wrap');if(!wrap)return;
-  const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
+  // ★ 먼저 월 탭 동기화 → currentCorpInvCardIds 확정
+  buildCorpInvTabs();
+  const allCorpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
+  // 현재 선택된 월 탭의 설정 사용자만 하위 카드탭으로 표시 (없으면 전체)
+  const _cids=currentCorpInvCardIds.length?currentCorpInvCardIds:allCorpCards.map(c=>c.id);
+  const corpCards=allCorpCards.filter(c=>_cids.includes(c.id));
   let html=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
   html+=`<div class="tab" id="ctab-corp-corp-invoice" onclick="switchCorpTab('corp-invoice')" style="border-bottom-color:transparent">📊 정산서</div>`;
   corpCards.forEach(c=>{html+=`<div class="tab" id="ctab-corp-${c.id}" onclick="switchCorpTab('${c.id}')" style="border-bottom-color:transparent">${esc(c.tabLabel)}</div>`;});
@@ -1900,13 +1923,19 @@ function buildCorpTabs(){
     html+=buildCardPanel(c,false).replace('<div id="cpanel-','<div data-corp-panel id="cpanel-');
   });
   wrap.innerHTML=html;
-  buildCorpInvTabs();
+  // 현재 카드탭이 필터에서 빠졌으면 정산서로 리셋
+  if(currentCorpTab!=='corp-invoice'&&!corpCards.find(c=>c.id===currentCorpTab))currentCorpTab='corp-invoice';
   switchCorpTab(currentCorpTab||'corp-invoice');
   corpCards.forEach(c=>refreshCardTable(c.id));
 }
 function buildAdvTabs(){
   const wrap=document.getElementById('adv-tabs-wrap');if(!wrap)return;
-  const advCards=appSettings.cards.filter(c=>c.type==='선급금');
+  // ★ 먼저 청구서 탭 동기화 → currentAdvInvCardIds 확정
+  buildAdvInvTabs();
+  const allAdvCards=appSettings.cards.filter(c=>c.type==='선급금');
+  // 현재 선택된 청구서 탭의 설정 사용자만 하위 카드탭으로 표시 (없으면 전체)
+  const _cids=currentAdvInvCardIds.length?currentAdvInvCardIds:allAdvCards.map(c=>c.id);
+  const advCards=allAdvCards.filter(c=>_cids.includes(c.id));
   let html=`<div style="background:#fff;border-bottom:1px solid #e0e0e0;overflow-x:auto;scrollbar-width:none"><div style="display:flex;min-width:max-content;padding:0 6px;align-items:stretch">`;
   html+=`<div class="tab" id="ctab-adv-adv-invoice" onclick="switchAdvTab('adv-invoice')" style="border-bottom-color:transparent">📋 청구서</div>`;
   html+=`<div class="tab" id="ctab-adv-adv-settlement" onclick="switchAdvTab('adv-settlement')" style="border-bottom-color:transparent">📊 정산서</div>`;
@@ -1924,7 +1953,8 @@ function buildAdvTabs(){
   // 선급금 정산서 패널
   html+=buildAdvSettlementPanel();
   wrap.innerHTML=html;
-  buildAdvInvTabs();
+  // 현재 카드탭이 필터에서 빠졌으면 청구서로 리셋
+  if(currentAdvTab&&currentAdvTab!=='adv-invoice'&&currentAdvTab!=='adv-settlement'&&currentAdvTab!=='adv-transfer'&&!advCards.find(c=>c.id===currentAdvTab))currentAdvTab='adv-invoice';
   switchAdvTab(currentAdvTab&&currentAdvTab!=='adv-settlement'&&currentAdvTab!=='adv-transfer'?currentAdvTab:'adv-invoice');
   advCards.forEach(c=>refreshCardTable(c.id));
   refreshTransferTable();
@@ -1958,17 +1988,23 @@ function addAdvSettTab(){
   appSettings.advSettTabs.push({id,month,seq});
   if(!appSettings.advSettlements)appSettings.advSettlements={};
   appSettings.advSettlements[id]={prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'};
-  persistSettings();currentAdvSettTab=id;
-  buildAdvTabs()
-  switchAdvTab('adv-settlement');renderAdvSettTabList();
+  currentAdvSettTab=id;
+  try{buildAdvTabs();}catch(e){console.warn(e);}
+  buildAdvSettTabs();
+  renderAdvSettTabList();
+  showToast('✅ '+seq+' 정산서 탭이 추가됐습니다.');
+  try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
 }
 function removeAdvSettTab(id){
   _ensureArr('advSettTabs');
-  if(appSettings.advSettTabs.length<=1){alert('최소 1개의 정산서 탭이 필요합니다.');return;}
+  if(appSettings.advSettTabs.length<=1){showToast('⚠️ 최소 1개의 정산서 탭이 필요합니다.');return;}
   appSettings.advSettTabs=appSettings.advSettTabs.filter(t=>t&&t.id!==id);
   if(appSettings.advSettlements)delete appSettings.advSettlements[id];
   if(currentAdvSettTab===id)currentAdvSettTab=appSettings.advSettTabs[0]?.id||'advsett1';
-  persistSettings();buildAdvSettTabs();renderAdvSettTabList();
+  buildAdvSettTabs();
+  renderAdvSettTabList();
+  showToast('🗑 정산서 탭이 삭제됐습니다.');
+  try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
 }
 function renderAdvSettTabList(){
   var el=document.getElementById('adv-sett-tab-list');
@@ -2054,6 +2090,8 @@ function buildAdvInvTabs(){
   const _found=tabs.find(t=>t&&t.id===currentAdvInvTab);
   if(_found){
     currentAdvInvCfg=_found;
+    // ★ 항상 현재 탭의 cardIds로 동기화 (appSettings가 진실의 원천)
+    currentAdvInvCardIds=_toArr(_found.cardIds||[]).filter(Boolean);
     if(_found.settId){
       currentAdvSettTab=_found.settId;
       currentAdvSettCfg=_toArr(appSettings.advSettTabs||[]).filter(Boolean).find(t=>t&&t.id===_found.settId)||{seq:_found.seq,id:_found.settId};
@@ -2065,14 +2103,18 @@ function buildAdvInvTabs(){
 }
 function switchAdvInvTab(id){
   currentAdvInvTab=id;
-  currentAdvInvCfg=_toArr(appSettings.advInvTabs||[]).filter(Boolean).find(t=>t&&t.id===id)||{seq:'1차',id};
+  const _tab=_toArr(appSettings.advInvTabs||[]).filter(Boolean).find(t=>t&&t.id===id);
+  currentAdvInvCfg=_tab||{seq:'1차',id};
+  // ★ 전용 상태에 cardIds 저장 (renderAdvInvoice·buildAdvTabs가 읽음)
+  currentAdvInvCardIds=_toArr(_tab?.cardIds||[]).filter(Boolean);
   // 연결된 정산서 탭 자동 동기화
   if(currentAdvInvCfg.settId){
     currentAdvSettTab=currentAdvInvCfg.settId;
     currentAdvSettCfg=_toArr(appSettings.advSettTabs||[]).filter(Boolean).find(t=>t&&t.id===currentAdvInvCfg.settId)||{seq:currentAdvInvCfg.seq,id:currentAdvInvCfg.settId};
   }
-  buildAdvInvTabs();
-  switchAdvTab('adv-invoice');
+  currentAdvTab='adv-invoice'; // 청구서 차수 전환 시 청구서 뷰로 리셋
+  // ★ 카드 하위탭 재구성 (선택된 차수의 설정 사용자만 표시)
+  buildAdvTabs();
 }
 function renderAdvInvoice(){
   const panel=document.getElementById('cpanel-adv-invoice');if(!panel)return;
@@ -2087,9 +2129,9 @@ function renderAdvInvoice(){
   const period=`${y}년`;
   const staffNote=appSettings.advStaffNote||'';
   const locationNote=appSettings.advLocationNote||'';
-  // 현재 탭의 cardIds 스냅샷으로 사용자 필터링
+  // ★ currentAdvInvCardIds 사용 (switchAdvInvTab / buildAdvInvTabs에서 설정됨)
   const _allAdvCards=appSettings.cards.filter(c=>c.type==='선급금');
-  const _tabCardIds=_toArr(cfg.cardIds||null).filter(Boolean);
+  const _tabCardIds=currentAdvInvCardIds.length?currentAdvInvCardIds:_toArr(cfg.cardIds||null).filter(Boolean);
   const advCards=_tabCardIds.length
     ?_allAdvCards.filter(c=>_tabCardIds.includes(c.id))
     :_allAdvCards;
@@ -2265,18 +2307,20 @@ function addAdvInvTab(){
   appSettings.advInvTabs.push({id,seq,settId,cardIds});
   appSettings.advSettTabs.push({id:settId,seq});
   appSettings.advSettlements[settId]={prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'};
-  advCards.forEach((card,ci)=>{
-    if(!cardData[card.id])cardData[card.id]={};
+  // ★ 청구서 항목 5개 고정 생성 (사용자 수와 무관 / 첫 사용자에 귀속, 청구서 뷰는 합산 표시)
+  if(advCards.length){
+    const _ownerId=advCards[0].id;
+    if(!cardData[_ownerId])cardData[_ownerId]={};
     for(let i=0;i<5;i++){
-      const rid='r'+(ts+ci*100+i);
+      const rid='r'+(ts+i);
       const row={tabId:id,month:new Date().getMonth()+1,code:budgetCodes[0]?.code||1500,middle:'',minor:'',date:'',detail:'',amount:0,proof:'',vendor:''};
-      cardData[card.id][rid]=row;
-      dbSet(`cards/${card.id}/${rid}`,row);
+      cardData[_ownerId][rid]=row;
+      dbSet(`cards/${_ownerId}/${rid}`,row);
     }
-  });
+  }
   try{buildAdvTabs();}catch(e){console.warn('buildAdvTabs err',e);}
   renderAdvInvTabList();
-  showToast('✅ '+seq+' 탭 추가 완료 (사용자 '+cardIds.length+'명 반영)');
+  showToast('✅ '+seq+' 청구서 탭 추가 완료 (항목 5개 생성)');
   try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
 }
 function removeAdvInvTab(id){
@@ -2302,54 +2346,32 @@ function renderAdvInvTabList(){
   var tabs=_toArr(appSettings.advInvTabs||[]).filter(Boolean);
   if(!tabs.length){el.innerHTML='<p style="font-size:12px;color:#aaa">탭이 없습니다.</p>';return;}
   var allAdv=appSettings.cards.filter(function(c){return c.type==='선급금';});
-  var html='<div style="display:flex;flex-direction:column;gap:10px">';
+  var html='<div style="display:flex;flex-direction:column;gap:6px">';
   for(var i=0;i<tabs.length;i++){
     var t=tabs[i];
     var tid=String(t.id||'');
     var inv=esc(advInvLabel(t));
     var sett=esc(advSettLabel(t));
+    // cardIds 없으면 현재 전체 사용자로 자동 초기화
+    if(!_toArr(t.cardIds||null).filter(Boolean).length&&allAdv.length){
+      t.cardIds=allAdv.map(function(c){return c.id;});
+    }
     var ids=_toArr(t.cardIds||null).filter(Boolean);
-    if(!ids.length&&allAdv.length){ids=allAdv.map(function(c){return c.id;});}
-    var cnt=ids.filter(function(id){return allAdv.some(function(c){return c.id===id;});}).length;
-    html+='<div style="padding:10px 12px;background:#f5f6fa;border-radius:10px;border:1.5px solid #e8eaf6">';
-    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+    var names=ids.map(function(cid){var c=allAdv.find(function(x){return x.id===cid;});return c?esc(c.tabLabel||c.person):'';}).filter(Boolean).join(', ');
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f6fa;border-radius:8px;font-size:12px">';
     html+='<div style="flex:1">';
-    html+='<span style="font-weight:700;font-size:13px;color:#1b5e20">📋 '+inv+'</span>';
-    html+='<span style="color:#37474f;margin-left:8px;font-size:11px">📊 '+sett+'</span>';
-    html+='<span style="color:#5c6bc0;margin-left:6px;font-size:11px">👤 '+cnt+'명 포함</span>';
+    html+='<span style="font-weight:700;color:#1b5e20">📋 '+inv+'</span>';
+    html+='<span style="color:#37474f;margin-left:6px;font-size:11px">📊 '+sett+'</span>';
+    html+='<span style="color:#5c6bc0;margin-left:6px;font-size:11px">👤 '+(names||'사용자 없음')+'</span>';
     html+='</div>';
     html+='<button class="btn btn-danger btn-sm" style="padding:3px 10px;font-size:11px" onclick="removeAdvInvTab(\''+tid+'\')">삭제</button>';
-    html+='</div>';
-    if(!allAdv.length){html+='<p style="font-size:11px;color:#aaa">사용자를 먼저 추가하세요.</p>';}
-    else{
-      html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-      for(var j=0;j<allAdv.length;j++){
-        var c=allAdv[j];
-        var checked=ids.includes(c.id)?'checked':'';
-        html+='<label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;background:#fff;padding:5px 10px;border-radius:20px;border:1.5px solid '+(checked?'#1b5e20':'#ddd')+';color:'+(checked?'#1b5e20':'#666')+'">';
-        html+='<input type="checkbox" '+checked+' onchange="updateAdvTabCards(\''+tid+'\',\''+c.id+'\',this.checked)" style="width:13px;height:13px;accent-color:#1b5e20">';
-        html+=esc(c.tabLabel||c.person)+'</label>';
-      }
-      html+='</div>';
-    }
     html+='</div>';
   }
   html+='</div>';
   el.innerHTML=html;
 }
-function updateAdvTabCards(tabId,cardId,isChecked){
-  var tab=_toArr(appSettings.advInvTabs||[]).filter(Boolean).find(function(t){return t&&t.id===tabId;});
-  if(!tab)return;
-  var allAdv=appSettings.cards.filter(function(c){return c.type==='선급금';});
-  var ids=_toArr(tab.cardIds||null).filter(Boolean);
-  if(!ids.length)ids=allAdv.map(function(c){return c.id;});
-  if(isChecked){if(!ids.includes(cardId))ids.push(cardId);}
-  else{ids=ids.filter(function(id){return id!==cardId;});}
-  tab.cardIds=ids;
-  renderAdvInvTabList();
-  buildAdvInvTabs();
-  try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
-}
+// updateAdvTabCards — 체크박스 방식 제거됨. addCardUser/removeCardUser에서 자동 처리
+function updateAdvTabCards(){}
 function buildCorpSettTabs(){
   const bar=document.getElementById('corp-sett-bar');if(!bar)return;
   const tabs=_toArr(appSettings.corpSettTabs||[]).filter(Boolean);
@@ -2378,17 +2400,24 @@ function addCorpSettTab(){
   appSettings.corpSettTabs.push({id,month,seq});
   if(!appSettings.corpSettlements)appSettings.corpSettlements={};
   appSettings.corpSettlements[id]={corpPrevBalance:0,corpBudget:0,corpOtherAmt:0,corpOtherLabel:'기타 수입'};
-  persistSettings();currentCorpSettTab=id;
-  buildCorpTabs()
-  switchCorpTab('corp-invoice');renderCorpSettTabList();
+  currentCorpSettTab=id;
+  try{buildCorpTabs();}catch(e){console.warn(e);}
+  buildCorpSettTabs();
+  renderCorpSettTabList();
+  showToast('✅ '+seq+' 정산서 탭이 추가됐습니다.');
+  try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
 }
 function removeCorpSettTab(id){
   _ensureArr('corpSettTabs');
-  if(appSettings.corpSettTabs.length<=1){alert('최소 1개의 정산서 탭이 필요합니다.');return;}
+  if(appSettings.corpSettTabs.length<=1){showToast('⚠️ 최소 1개의 정산서 탭이 필요합니다.');return;}
   appSettings.corpSettTabs=appSettings.corpSettTabs.filter(t=>t&&t.id!==id);
   if(appSettings.corpSettlements)delete appSettings.corpSettlements[id];
   if(currentCorpSettTab===id)currentCorpSettTab=appSettings.corpSettTabs[0]?.id||'corpsett1';
-  persistSettings();buildCorpSettTabs();renderCorpSettTabList();
+  buildCorpSettTabs();
+  renderCorpSettTabList();
+  showToast('🗑 정산서 탭이 삭제됐습니다.');
+  try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
+
 }
 function renderCorpSettTabList(){
   var el=document.getElementById('corp-sett-tab-list');
@@ -2426,37 +2455,45 @@ function buildCorpInvTabs(){
   const bar=document.getElementById('corp-inv-bar');if(!bar)return;
   const tabs=_toArr(appSettings.corpInvTabs||[]).filter(Boolean);
   if(!tabs.find(t=>t&&t.id===currentCorpInvTab)&&tabs.length)currentCorpInvTab=tabs[0].id;
-  // 항상 실제 탭 데이터로 currentCorpInvCfg 동기화 (초기 하드코딩 값에는 cardIds 없음)
   const _found=tabs.find(t=>t&&t.id===currentCorpInvTab);
-  if(_found)currentCorpInvCfg=_found;
+  if(_found){
+    currentCorpInvCfg=_found;
+    // ★ 항상 현재 탭의 cardIds로 동기화 (appSettings가 진실의 원천)
+    currentCorpInvCardIds=_toArr(_found.cardIds||[]).filter(Boolean);
+  }
   bar.innerHTML=`<div class="sub-tabs" style="border-radius:0;box-shadow:none;border-bottom:2px solid #e8eaf6;background:#fff">
     ${tabs.map(t=>`<div class="sub-tab${t.id===currentCorpInvTab?' active':''}" onclick="switchCorpInvTab('${t.id}')">${esc(corpInvLabel(t))}</div>`).join('')}
   </div>`;
 }
 function switchCorpInvTab(id){
   currentCorpInvTab=id;
-  currentCorpInvCfg=_toArr(appSettings.corpInvTabs||[]).filter(Boolean).find(t=>t&&t.id===id)||{month:0,id};
-  buildCorpInvTabs();
-  // 모든 법인카드에 월 필터 자동 적용
-  const m=+(currentCorpInvCfg.month||0);
+  const _tab=_toArr(appSettings.corpInvTabs||[]).filter(Boolean).find(t=>t&&t.id===id);
+  currentCorpInvCfg=_tab||{month:0,id,cardIds:[]};
+  // ★ 전용 상태에 cardIds 저장 (renderCorpInvoice·buildCorpTabs가 읽음)
+  currentCorpInvCardIds=_toArr(_tab?.cardIds||[]).filter(Boolean);
+  currentCorpTab='corp-invoice'; // 월 전환 시 정산서 뷰로 리셋
+  // ★ 카드 하위탭 재구성 (선택된 월의 설정 사용자만 표시) + 정산서 렌더
+  buildCorpTabs();
+  // 각 카드 패널에 월 필터 적용 (buildCorpTabs로 DOM 재생성 후)
+  const m=+(_tab?.month||0);
   appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드').forEach(card=>{
     const sel=document.getElementById(`flt-${card.id}-month`);
     if(sel){sel.value=m||'';applyFilter(card.id,'month',m||0);}
   });
-  switchCorpTab('corp-invoice');
 }
 function renderCorpInvoice(){
   const panel=document.getElementById('cpanel-corp-invoice');if(!panel)return;
-  const mFilter=+(currentCorpInvCfg?.month||0);
+  // ★ currentCorpInvCardIds만 사용 (switchCorpInvTab / buildCorpInvTabs에서 설정됨)
+  const _cfg=currentCorpInvCfg||{month:0};
+  const mFilter=+(_cfg.month||0);
   const n0=v=>(v||0).toLocaleString('ko-KR');
-  const tabLabel=corpInvLabel(currentCorpInvCfg||{month:0});
+  const tabLabel=corpInvLabel(_cfg);
   const company=projectInfo.company||'',proj=projectInfo.name||'드라마',manager=projectInfo.manager||'';
   const today=new Date().toLocaleDateString('ko-KR');
   const _allCorpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
-  const _tabCardIds=_toArr(currentCorpInvCfg?.cardIds||[]);
-  const corpCards=_tabCardIds.length
-    ?_allCorpCards.filter(c=>_tabCardIds.includes(c.id))
-    :_allCorpCards;
+  // cardIds가 없으면 전체 카드 (탭 생성 전 기본 상태)
+  const _cids=currentCorpInvCardIds.length?currentCorpInvCardIds:_allCorpCards.map(c=>c.id);
+  const corpCards=_allCorpCards.filter(c=>_cids.includes(c.id));
   const colors=['#1a237e','#1b5e20','#4a148c','#b71c1c','#e65100','#006064'];
 
   let grandTotal=0;
@@ -2567,51 +2604,29 @@ function renderCorpInvTabList(){
   var tabs=_toArr(appSettings.corpInvTabs||[]).filter(Boolean);
   if(!tabs.length){el.innerHTML='<p style="font-size:12px;color:#aaa">탭이 없습니다.</p>';return;}
   var allC=appSettings.cards.filter(function(c){return (c.type||'법인카드')==='법인카드';});
-  var html='<div style="display:flex;flex-direction:column;gap:10px">';
+  var html='<div style="display:flex;flex-direction:column;gap:6px">';
   for(var i=0;i<tabs.length;i++){
     var t=tabs[i];
     var tid=String(t.id||'');
-    var ids=_toArr(t.cardIds||null).filter(Boolean);
-    // cardIds 없으면 모든 카드로 초기화
-    if(!ids.length&&allC.length){ids=allC.map(function(c){return c.id;});}
-    var cnt=ids.filter(function(id){return allC.some(function(c){return c.id===id;});}).length;
-    html+='<div style="padding:10px 12px;background:#f5f6fa;border-radius:10px;border:1.5px solid #e8eaf6">';
-    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-    html+='<span style="font-weight:700;font-size:13px;color:#1a237e">'+esc(corpInvLabel(t))+'</span>';
-    html+='<span style="color:#5c6bc0;font-size:11px">👤 '+cnt+'명 포함</span>';
-    html+='<div style="flex:1"></div>';
-    html+='<button class="btn btn-danger btn-sm" style="padding:3px 10px;font-size:11px" onclick="removeCorpInvTab(\''+tid+'\')">삭제</button>';
-    html+='</div>';
-    if(!allC.length){html+='<p style="font-size:11px;color:#aaa">사용자를 먼저 추가하세요.</p>';}
-    else{
-      html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-      for(var j=0;j<allC.length;j++){
-        var c=allC[j];
-        var checked=ids.includes(c.id)?'checked':'';
-        html+='<label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;cursor:pointer;background:#fff;padding:5px 10px;border-radius:20px;border:1.5px solid '+(checked?'#3949ab':'#ddd')+';color:'+(checked?'#1a237e':'#666')+'">';
-        html+='<input type="checkbox" '+checked+' onchange="updateCorpTabCards(\''+tid+'\',\''+c.id+'\',this.checked)" style="width:13px;height:13px;accent-color:#3949ab">';
-        html+=esc(c.tabLabel||c.person)+'</label>';
-      }
-      html+='</div>';
+    // cardIds 없으면 현재 전체 사용자로 자동 초기화 (appSettings 반영)
+    if(!_toArr(t.cardIds||null).filter(Boolean).length&&allC.length){
+      t.cardIds=allC.map(function(c){return c.id;});
     }
+    var ids=_toArr(t.cardIds||null).filter(Boolean);
+    var names=ids.map(function(cid){var c=allC.find(function(x){return x.id===cid;});return c?esc(c.tabLabel||c.person):'';}).filter(Boolean).join(', ');
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f6fa;border-radius:8px;font-size:12px">';
+    html+='<div style="flex:1">';
+    html+='<span style="font-weight:700;color:#1a237e">'+esc(corpInvLabel(t))+'</span>';
+    html+='<span style="color:#5c6bc0;margin-left:8px;font-size:11px">👤 '+(names||'사용자 없음')+'</span>';
+    html+='</div>';
+    html+='<button class="btn btn-danger btn-sm" style="padding:3px 10px;font-size:11px" onclick="removeCorpInvTab(\''+tid+'\')">삭제</button>';
     html+='</div>';
   }
   html+='</div>';
   el.innerHTML=html;
 }
-function updateCorpTabCards(tabId,cardId,isChecked){
-  var tab=_toArr(appSettings.corpInvTabs||[]).filter(Boolean).find(function(t){return t&&t.id===tabId;});
-  if(!tab)return;
-  var allC=appSettings.cards.filter(function(c){return (c.type||'법인카드')==='법인카드';});
-  var ids=_toArr(tab.cardIds||null).filter(Boolean);
-  if(!ids.length)ids=allC.map(function(c){return c.id;});
-  if(isChecked){if(!ids.includes(cardId))ids.push(cardId);}
-  else{ids=ids.filter(function(id){return id!==cardId;});}
-  tab.cardIds=ids;
-  renderCorpInvTabList();
-  buildCorpInvTabs();
-  try{persistSettings();}catch(e){console.warn('설정 저장 실패:',e);}
-}
+// updateCorpTabCards — 체크박스 방식 제거됨. addCardUser/removeCardUser에서 자동 처리
+function updateCorpTabCards(){}
 function addCorpCardTab(){
   const newId='card'+Date.now().toString().slice(-8);
   appSettings.cards.push({id:newId,cardNum:'',person:'',tabLabel:'신규카드',type:'법인카드'});
@@ -2638,7 +2653,14 @@ function switchCorpTab(cid){
   const bt=document.getElementById(`ctab-corp-${cid}`);if(bt){bt.classList.add('active');bt.style.borderBottomColor='#1a237e';}
   wrap.querySelectorAll('[data-corp-panel]').forEach(p=>p.style.display='none');
   const pn=document.getElementById(`cpanel-${cid}`);if(pn)pn.style.display='block';
-  if(cid==='corp-invoice'){buildCorpInvTabs();renderCorpInvoice();}
+  if(cid==='corp-invoice'){
+    buildCorpInvTabs(); // currentCorpInvCfg + currentCorpInvCardIds 동기화
+    // currentCorpInvCardIds 최종 확인 (buildCorpInvTabs에서 이미 설정됨)
+    if(!currentCorpInvCardIds.length&&currentCorpInvCfg?.cardIds){
+      currentCorpInvCardIds=_toArr(currentCorpInvCfg.cardIds||[]).filter(Boolean);
+    }
+    renderCorpInvoice();
+  }
 }
 function switchAdvTab(cid){
   currentAdvTab=cid;
@@ -3729,6 +3751,7 @@ function exportSettlementAll(type){
 let currentCardTab=null, currentCorpTab=null, currentAdvTab=null;
 let currentAdvInvTab='advinv1';
 let currentAdvInvCfg={seq:'1차',id:'advinv1'};
+let currentAdvInvCardIds=[]; // 현재 선택된 청구서 탭의 cardIds 전용 상태
 let currentAdvSettTab='advsett1';
 let currentAdvSettCfg={seq:'1차',id:'advsett1'};
 function switchCardTab(cid){
@@ -3967,8 +3990,8 @@ function renderBudgetEditList(){
   document.getElementById('budget-edit-list').innerHTML=budgetCodes.map((b,i)=>`
     <div class="budget-edit-row">
       <div class="code-lbl">${b.code}</div>
-      <input value="${esc(b.name)}" onchange="budgetCodes[${i}].name=this.value;saveBudget()" placeholder="항목명">
-      <input type="text" class="num-input" value="${fmtI(b.budget)}" onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value)" onchange="budgetCodes[${i}].budget=parseI(this.value);saveBudget()" style="text-align:right">
+      <input value="${esc(b.name)}" oninput="budgetCodes[${i}].name=this.value;_debSave('bud${i}',saveBudget)" placeholder="항목명">
+      <input type="text" class="num-input" value="${fmtI(b.budget)}" onfocus="this.value=parseI(this.value)||0" oninput="budgetCodes[${i}].budget=parseI(this.value);_debSave('budamt${i}',saveBudget)" onblur="this.value=fmtI(this.value)" style="text-align:right">
       <button class="btn btn-danger btn-sm" style="padding:3px 10px;font-size:11px" onclick="removeBudgetCode(${i})">삭제</button>
     </div>`).join('');
 }
@@ -3988,9 +4011,9 @@ function renderCardUserList(){
     <div class="card-user-row">
       <div class="row-h"><span>사용자 ${i+1}</span><button class="btn btn-danger btn-sm" onclick="removeCardUser(${i})">삭제</button></div>
       <div class="cu-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}" onchange="saveCardUsers()"></div>
-        <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}" onchange="saveCardUsers()"></div>
-        <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}" oninput="_saveCardUserField(${i},'tabLabel',this.value)" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}" oninput="_saveCardUserField(${i},'cardNum',this.value)" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}" oninput="_saveCardUserField(${i},'person',this.value)" onchange="saveCardUsers()"></div>
       </div>
     </div>`;
   const advEl=document.getElementById('card-user-list-선급금');
@@ -4003,12 +4026,27 @@ function addCardUser(type){
   const newId='card'+Date.now().toString().slice(-8);
   appSettings.cards.push({id:newId,cardNum:'',person:'새 사용자',tabLabel:'신규',type:t});
   cardData[newId]={};selected[newId]=new Set();filters[newId]={};
+  // 기존 탭에는 추가하지 않음 (출연료처럼 탭 생성 시점의 사용자 스냅샷 유지)
+  // → 새로 탭을 추가하면 그 시점의 전체 사용자가 자동 포함됨
+  renderCorpInvTabList();renderAdvInvTabList();
   renderCardUserList();saveCardUsers();
 }
 function removeCardUser(i){
   if(appSettings.cards.length<=1){showToast('최소 1명 필요합니다.');return;}
   if(!confirm('삭제하시겠습니까?'))return;
+  const removed=appSettings.cards[i];
+  const removedId=removed?.id;
   appSettings.cards.splice(i,1);
+  // 삭제된 사용자 → 모든 탭의 cardIds에서 제거
+  if(removedId){
+    _toArr(appSettings.corpInvTabs||[]).filter(Boolean).forEach(tab=>{
+      if(tab.cardIds)tab.cardIds=tab.cardIds.filter(id=>id!==removedId);
+    });
+    _toArr(appSettings.advInvTabs||[]).filter(Boolean).forEach(tab=>{
+      if(tab.cardIds)tab.cardIds=tab.cardIds.filter(id=>id!==removedId);
+    });
+    renderCorpInvTabList();renderAdvInvTabList();
+  }
   renderCardUserList();saveCardUsers();
 }
 function saveCardUsers(){
@@ -4017,8 +4055,10 @@ function saveCardUsers(){
     c.cardNum=document.getElementById(`cu-num-${i}`)?.value||c.cardNum;
     c.person=document.getElementById(`cu-person-${i}`)?.value||c.person;
   });
+  // 탭 목록 갱신 (이름 변경 반영)
+  renderCorpInvTabList();renderAdvInvTabList();
   persistSettings();buildCorpTabs();buildAdvTabs();
-  ensureCardListeners(); // 새로 추가된 카드의 Firebase 리스너 즉시 등록
+  ensureCardListeners();
 }
 function renderTagSettings(){
   const render=(key,elId)=>{const el=document.getElementById(elId);if(!el)return;el.innerHTML=(appSettings[key]||[]).map(v=>`<span class="tag">${esc(v)}<button onclick="removeTag('${key}','${esc(v)}','${elId}')">×</button></span>`).join('');};
@@ -4077,6 +4117,14 @@ function addTag(key,inputId,elId){const input=document.getElementById(inputId);c
 function removeTag(key,val,elId){appSettings[key]=(appSettings[key]||[]).filter(v=>v!==val);renderTagSettings();saveTagSettings();}
 function saveTagSettings(){persistSettings();updateModalMidSelects();}
 function persistSettings(){localStorage.setItem('integrated_settings',JSON.stringify(appSettings));dbSet('settings',appSettings);}
+// ── 입력 즉시 저장 헬퍼 (debounce) ──
+function _debSave(key,fn,ms){clearTimeout(saveTimer['_d_'+key]);saveTimer['_d_'+key]=setTimeout(fn,ms||400);}
+// 카드 사용자 입력칸: 타이핑 즉시 모델 반영 + debounce 저장 (입력칸 재렌더 없이)
+function _saveCardUserField(i,field,val){
+  if(!appSettings.cards[i])return;
+  appSettings.cards[i][field]=val;
+  _debSave('cu'+i+field,()=>{localStorage.setItem('integrated_settings',JSON.stringify(appSettings));dbSet('settings',appSettings);},400);
+}
 
 // ════════════════════════════════════════════
 // 선택 행 내보내기
@@ -4518,50 +4566,32 @@ function setupPresence(){
 // 데모 데이터
 // ════════════════════════════════════════════
 function loadDemo(){
-  projectInfo={name:'다음생은 없으니까요',company:'주식회사 티엠이 그룹',manager:'홍승철',episodes:12,year:2025};
+  const y=new Date().getFullYear();
+  projectInfo={name:'드라마 샘플 프로젝트',company:'제작사 주식회사',manager:'담당자',episodes:16,year:y,startMonth:1,opMonths:12};
   applyProjectInfo();
   personData={
-    p1:{month:10,code:300,category:'연출용역',name:'신대철',rrn:'780901-*******',bank:'하나은행',account:'345-678-901234',holder:'신대철',supply:11000000,notes:'연출'},
-    p2:{month:10,code:300,category:'제작용역',name:'김상은',rrn:'800101-*******',bank:'신한은행',account:'110-123-456789',holder:'김상은',supply:6000000,notes:'제작총괄'},
-    p3:{month:10,code:1100,category:'장소사용비',name:'강문자',rrn:'601230-*******',bank:'농협은행',account:'567-890-123456',holder:'강문자',supply:1350000,notes:'선민/미자집'},
-    p4:{month:11,code:300,category:'제작용역',name:'이수정',rrn:'850615-*******',bank:'국민은행',account:'123-45-678901',holder:'이수정',supply:4500000,notes:''},
+    p1:{month:1,code:300,category:'연출용역',name:'홍길동',rrn:'800101-*******',bank:'신한은행',account:'110-000-000000',holder:'홍길동',supply:5000000,notes:'연출'},
+    p2:{month:1,code:300,category:'제작용역',name:'김철수',rrn:'850615-*******',bank:'국민은행',account:'123-00-000000',holder:'김철수',supply:3000000,notes:'제작'},
   };
   bizData={
-    b1:{month:10,code:300,category:'연출용역',name:'주식회사 로드넘버',bizNum:'123-81-12345',bank:'신한은행',account:'100-023-456789',holder:'로드넘버',supply:22000000,vat:0,tax:0,notes:'연출팀'},
-    b2:{month:10,code:1100,category:'장소사용료',name:'주식회사 가나문화콘텐츠',bizNum:'345-81-34567',bank:'기업은행',account:'345-678-901234',holder:'가나문화',supply:2000000,vat:200000,tax:0,notes:'얼반웍스'},
-    b3:{month:10,code:1800,category:'홍보비',name:'스푸트닉',bizNum:'456-81-45678',bank:'하나은행',account:'456-789-012345',holder:'스푸트닉',supply:4500000,vat:450000,tax:0,notes:'홍보비'},
-    b4:{month:11,code:1900,category:'임차료',name:'건물주',bizNum:'',bank:'우리은행',account:'567-890-123456',holder:'임대인',supply:850000,vat:0,tax:0,notes:'사무실'},
+    b1:{month:1,code:300,category:'연출용역',name:'주식회사 샘플',bizNum:'000-00-00000',bank:'신한은행',account:'100-000-000000',holder:'샘플',supply:10000000,vat:0,tax:0,notes:''},
+    b2:{month:1,code:1100,category:'장소사용료',name:'장소임대업체',bizNum:'111-11-11111',bank:'기업은행',account:'000-000-000000',holder:'임대',supply:2000000,vat:200000,tax:0,notes:''},
   };
-  cardData.card8487={
-    r1:{month:11,code:1500,middle:'제작진행비',minor:'식대',date:'2025-11-16',detail:'홍승철 이사 외 2명 석식',amount:147000,proof:'법인카드영수증',vendor:'소칸'},
-    r2:{month:11,code:1500,middle:'제작진행비',minor:'기타',date:'2025-11-20',detail:'종방연 선물',amount:2588000,proof:'법인카드영수증',vendor:'더현대 몽블랑'},
-  };
-  cardData.card9944={
-    r1:{month:11,code:1500,middle:'제작진행비',minor:'부식',date:'2025-11-16',detail:'제작2팀 음료',amount:16000,proof:'법인카드영수증',vendor:'공차'},
-    r2:{month:11,code:1200,middle:'차량대여',minor:'주유',date:'2025-11-18',detail:'제작차량 유류대',amount:50000,proof:'법인카드영수증',vendor:'셀프주유소'},
+  cardData.card001={
+    r1:{month:1,code:1500,middle:'제작진행비',minor:'식대',date:`${y}-01-15`,detail:'촬영팀 식사',amount:150000,proof:'법인카드영수증',vendor:'식당'},
+    r2:{month:1,code:1500,middle:'제작진행비',minor:'주유',date:`${y}-01-20`,detail:'차량 주유',amount:80000,proof:'법인카드영수증',vendor:'주유소'},
   };
   cardData.cardAdv001={
-    r1:{month:4,code:1100,middle:'장소사용료',minor:'장소사용료',date:'2025-04-05',detail:'250만원 * 5일 / 1,000만원 * 1일',amount:22500000,proof:'계약서',vendor:'세트 3일 빗마루 1일'},
-    r2:{month:4,code:1500,middle:'제작진행비',minor:'식대',date:'2025-04-07',detail:'22인 * 9일 / 12인 * 6일',amount:6500000,proof:'영수증',vendor:''},
-    r3:{month:4,code:1500,middle:'제작진행비',minor:'숙박비',date:'2025-04-07',detail:'50,000원 * 30실 * 2일',amount:3000000,proof:'영수증',vendor:''},
-    r4:{month:4,code:1500,middle:'제작진행비',minor:'유류대/교통비',date:'2025-04-07',detail:'8대 * 50,000원 * 9일',amount:4000000,proof:'영수증',vendor:''},
-    r5:{month:4,code:1500,middle:'제작진행비',minor:'야외진행비',date:'2025-04-07',detail:'일 50만원 * 9일',amount:4500000,proof:'영수증',vendor:''},
-    r6:{month:4,code:1500,middle:'제작진행비',minor:'프로듀서진행비',date:'2025-04-07',detail:'회당 300만원',amount:3000000,proof:'영수증',vendor:''},
-    r7:{month:4,code:1500,middle:'제작진행비',minor:'연출진행비',date:'2025-04-07',detail:'월 150만원',amount:1500000,proof:'영수증',vendor:''},
+    r1:{month:1,code:1500,middle:'제작진행비',minor:'식대',date:`${y}-01-10`,detail:'사전제작 식비',amount:500000,proof:'영수증',vendor:''},
+    r2:{month:1,code:1100,middle:'장소사용료',minor:'장소사용료',date:`${y}-01-15`,detail:'촬영 장소 사용료',amount:3000000,proof:'계약서',vendor:''},
   };
   transferData={
-    t1:{month:11,code:1100,item:'장소사용료',detail:'나정아파트 장소사용료',vendor:'안산고잔8단지입주자대표회의',date:'2025-11-17',supply:1000000,vat:100000,tax:0,insurance:0,proof:'세금계산서',notes:''},
-    t2:{month:11,code:1100,item:'장소사용료',detail:'바베큐장 장소사용료',vendor:'주식회사 로마로',date:'2025-11-19',supply:3000000,vat:300000,tax:0,insurance:0,proof:'세금계산서',notes:''},
-    t3:{month:10,code:1900,item:'임차비',detail:'제작사무실 임차료',vendor:'건물주',date:'2025-10-31',supply:850000,vat:0,tax:0,insurance:0,proof:'계약서',notes:'10월분'},
+    t1:{month:1,code:1100,item:'장소사용료',detail:'촬영지 장소사용료',vendor:'건물주',date:`${y}-01-31`,supply:1000000,vat:100000,tax:0,insurance:0,proof:'세금계산서',notes:''},
   };
   actorData={
-    ac1:{month:10,code:400,role:'주인공',name:'손수아',grade:'주연',union:false,type:'원징',feePerEp:8000000,episodes:6,extra:0,ratio:1,payDate:'2025-10-31',notes:'1~6회'},
-    ac2:{month:10,code:400,role:'히로인',name:'이수빈',grade:'주연',union:false,type:'원징',feePerEp:5000000,episodes:6,extra:0,ratio:1,payDate:'2025-10-31',notes:'1~6회'},
-    ac3:{month:10,code:400,role:'형사',name:'권오현',grade:'조연',union:true,type:'원징',feePerEp:1500000,episodes:3,extra:500000,ratio:1,payDate:'2025-10-31',notes:'특별출연'},
-    ac4:{month:11,code:400,role:'주인공',name:'손수아',grade:'주연',union:false,type:'원징',feePerEp:8000000,episodes:6,extra:0,ratio:1,payDate:'2025-11-28',notes:'7~12회'},
-    ac5:{month:11,code:400,role:'히로인',name:'이수빈',grade:'주연',union:false,type:'원징',feePerEp:5000000,episodes:6,extra:0,ratio:1,payDate:'2025-11-28',notes:'7~12회'},
-    ac6:{month:10,code:500,role:'행인',name:'김보조',grade:'단역',union:false,type:'원징',feePerEp:200000,episodes:2,extra:50000,ratio:0.9,payDate:'2025-10-31',notes:''},
-    ac7:{month:10,code:500,role:'무술지도',name:'이무술',grade:'무술',union:false,type:'원징',feePerEp:800000,episodes:4,extra:200000,ratio:1,payDate:'2025-10-31',notes:''},
+    ac1:{month:1,code:400,role:'주인공',name:'김배우',grade:'주연',union:false,type:'원징',feePerEp:5000000,episodes:4,extra:0,ratio:1,payDate:`${y}-01-31`,notes:'1~4회'},
+    ac2:{month:1,code:400,role:'조연',name:'이조연',grade:'조연',union:true,type:'원징',feePerEp:1000000,episodes:4,extra:0,ratio:1,payDate:`${y}-01-31`,notes:''},
+    ac3:{month:1,code:500,role:'행인',name:'박단역',grade:'단역',union:false,type:'원징',feePerEp:150000,episodes:2,extra:30000,ratio:1,payDate:`${y}-01-31`,notes:''},
   };
   renderPersonTable();renderBizTable();renderActorTable();refreshTransferTable();
   appSettings.cards.forEach(c=>refreshCardTable(c.id));
@@ -4711,6 +4741,13 @@ function doSignUp(){
 }
 function doSignOutBtn(){
   if(window.__fbAuth)window.__fbAuth.signOut();
+  // Firebase 리스너 전체 해제
+  _clearAllListeners();
+  // 메모리 내 개인정보 데이터 완전 초기화 (개인정보 보호)
+  personData={};bizData={};cardData={};transferData={};actorData={};
+  appSettings.cards.forEach(c=>{selected[c.id]=new Set();filters[c.id]={};});
+  selected.person=new Set();selected.biz=new Set();selected.actor=new Set();selected.transfer=new Set();
+  filters.person={};filters.biz={};filters.actor={};filters.transfer={};
   currentUser=null;userRole='guest';
   showLoginScreen();
 }
