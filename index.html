@@ -931,13 +931,12 @@ function applyProjectInfo(){
   setText('hdr-sub',projectInfo.name||'드라마 통합 정산 시스템');
 }
 function saveProjectInfo(){
+  // 모델·localStorage·헤더는 즉시 반영, Firebase 동기화만 3초 후
+  projectInfo={name:_v('s-projname'),company:_v('s-company'),manager:_v('s-manager'),episodes:+_v('s-episodes')||12,year:+_v('s-year')||2025,startMonth:+(document.getElementById('s-start-month')?.value)||1,opMonths:+(document.getElementById('s-op-months')?.value)||12};
+  try{localStorage.setItem('integrated_proj',JSON.stringify(projectInfo));}catch(e){}
+  setText('hdr-sub',projectInfo.name);
   clearTimeout(saveTimer.proj);
-  saveTimer.proj=setTimeout(()=>{
-    projectInfo={name:_v('s-projname'),company:_v('s-company'),manager:_v('s-manager'),episodes:+_v('s-episodes')||12,year:+_v('s-year')||2025,startMonth:+(document.getElementById('s-start-month')?.value)||1,opMonths:+(document.getElementById('s-op-months')?.value)||12};
-    localStorage.setItem('integrated_proj',JSON.stringify(projectInfo));
-    dbSet('projectInfo',projectInfo);
-    setText('hdr-sub',projectInfo.name);
-  },600);
+  saveTimer.proj=setTimeout(()=>{try{dbSet('projectInfo',projectInfo);}catch(e){console.warn('프로젝트 동기화 실패:',e);}},3000);
 }
 
 // ════════════════════════════════════════════
@@ -4001,10 +4000,14 @@ function addBudgetCode(){
   renderBudgetEditList();saveBudget();
 }
 function removeBudgetCode(i){budgetCodes.splice(i,1);renderBudgetEditList();saveBudget();}
+let _budgetTimer=null;
 function saveBudget(){
-  localStorage.setItem('integrated_budget',JSON.stringify(budgetCodes));
-  dbSet('budget',budgetCodes);
+  // localStorage 즉시 저장
+  try{localStorage.setItem('integrated_budget',JSON.stringify(budgetCodes));}catch(e){}
   renderFinal();renderPersonTable();renderBizTable();refreshCardTable(currentCardTab||appSettings.cards[0]?.id||'');refreshTransferTable();
+  // Firebase 동기화는 3초 후 (연속 입력 합산)
+  clearTimeout(_budgetTimer);
+  _budgetTimer=setTimeout(()=>{try{dbSet('budget',budgetCodes);}catch(e){console.warn('예산 동기화 실패:',e);}},3000);
 }
 function renderCardUserList(){
   const buildRow=(c,i)=>`
@@ -4116,14 +4119,21 @@ function removeCustomSection(type,key){
 function addTag(key,inputId,elId){const input=document.getElementById(inputId);const val=input.value.trim();if(!val)return;if(!(appSettings[key]||[]).includes(val)){if(!appSettings[key])appSettings[key]=[];appSettings[key].push(val);}input.value='';renderTagSettings();saveTagSettings();}
 function removeTag(key,val,elId){appSettings[key]=(appSettings[key]||[]).filter(v=>v!==val);renderTagSettings();saveTagSettings();}
 function saveTagSettings(){persistSettings();updateModalMidSelects();}
-function persistSettings(){localStorage.setItem('integrated_settings',JSON.stringify(appSettings));dbSet('settings',appSettings);}
+let _persistTimer=null;
+function persistSettings(){
+  // ① localStorage 즉시 저장 (새로고침해도 유실 없음)
+  try{localStorage.setItem('integrated_settings',JSON.stringify(appSettings));}catch(e){}
+  // ② Firebase 동기화는 입력 후 3초 뒤 (연속 입력은 1회로 합산)
+  clearTimeout(_persistTimer);
+  _persistTimer=setTimeout(()=>{try{dbSet('settings',appSettings);}catch(e){console.warn('설정 동기화 실패:',e);}},3000);
+}
 // ── 입력 즉시 저장 헬퍼 (debounce) ──
-function _debSave(key,fn,ms){clearTimeout(saveTimer['_d_'+key]);saveTimer['_d_'+key]=setTimeout(fn,ms||400);}
-// 카드 사용자 입력칸: 타이핑 즉시 모델 반영 + debounce 저장 (입력칸 재렌더 없이)
+function _debSave(key,fn,ms){clearTimeout(saveTimer['_d_'+key]);saveTimer['_d_'+key]=setTimeout(fn,ms||3000);}
+// 카드 사용자 입력칸: 타이핑 즉시 모델 반영 + 3초 후 저장 (입력칸 재렌더 없이)
 function _saveCardUserField(i,field,val){
   if(!appSettings.cards[i])return;
   appSettings.cards[i][field]=val;
-  _debSave('cu'+i+field,()=>{localStorage.setItem('integrated_settings',JSON.stringify(appSettings));dbSet('settings',appSettings);},400);
+  persistSettings(); // localStorage 즉시 + Firebase 3초
 }
 
 // ════════════════════════════════════════════
