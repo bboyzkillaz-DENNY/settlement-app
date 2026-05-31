@@ -312,6 +312,8 @@ body.role-pending .readonly-banner{display:block;}
     <div class="card-header">📊 예산 집행 현황
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn btn-excel btn-sm" onclick="exportFinal()">📥 엑셀</button>
+        <button class="btn btn-sm" style="background:#5c6bc0;color:#fff;font-size:11px;padding:4px 10px" onclick="document.getElementById('budget-import-file').click()">📤 예산안 가져오기</button>
+        <input type="file" id="budget-import-file" accept=".xlsx,.xls" style="display:none" onchange="importBudgetExcel(this)">
         <select id="final-month-filter" onchange="renderFinal()" style="padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-family:inherit">
           <option value="0">전체 (누적)</option>
           <option value="1">1월</option><option value="2">2월</option><option value="3">3월</option>
@@ -547,11 +549,11 @@ body.role-pending .readonly-banner{display:block;}
     <div class="card-header">📌 프로젝트 기본 정보</div>
     <div class="card-body">
       <div class="info-grid">
-        <div class="info-item full"><label>프로젝트명</label><input id="s-projname" oninput="saveProjectInfo()"></div>
-        <div class="info-item"><label>제작사</label><input id="s-company" oninput="saveProjectInfo()"></div>
-        <div class="info-item"><label>담당자</label><input id="s-manager" oninput="saveProjectInfo()"></div>
-        <div class="info-item"><label>방영횟수</label><input type="number" id="s-episodes" value="12" oninput="saveProjectInfo()"></div>
-        <div class="info-item"><label>촬영 시작년도</label><input type="number" id="s-year" value="2025" oninput="saveProjectInfo()"></div>
+        <div class="info-item full"><label>프로젝트명</label><input id="s-projname" oninput="saveProjectInfo()" onkeydown="if(event.key==='Enter'){saveProjectInfo();_flushSettings(event)}"></div>
+        <div class="info-item"><label>제작사</label><input id="s-company" oninput="saveProjectInfo()" onkeydown="if(event.key==='Enter'){saveProjectInfo();_flushSettings(event)}"></div>
+        <div class="info-item"><label>담당자</label><input id="s-manager" oninput="saveProjectInfo()" onkeydown="if(event.key==='Enter'){saveProjectInfo();_flushSettings(event)}"></div>
+        <div class="info-item"><label>방영횟수</label><input type="number" id="s-episodes" value="12" oninput="saveProjectInfo()" onkeydown="if(event.key==='Enter'){saveProjectInfo();_flushSettings(event)}"></div>
+        <div class="info-item"><label>촬영 시작년도</label><input type="number" id="s-year" value="2025" oninput="saveProjectInfo()" onkeydown="if(event.key==='Enter'){saveProjectInfo();_flushSettings(event)}"></div>
         <div class="info-item"><label>집행 시작 월</label><select id="s-start-month" onchange="saveProjectInfo();renderFinal()"><option value="1">1월</option><option value="2">2월</option><option value="3">3월</option><option value="4">4월</option><option value="5">5월</option><option value="6">6월</option><option value="7">7월</option><option value="8">8월</option><option value="9">9월</option><option value="10">10월</option><option value="11">11월</option><option value="12">12월</option></select></div>
         <div class="info-item"><label>운영 개월</label><select id="s-op-months" onchange="saveProjectInfo();renderFinal()"><option value="1">1개월</option><option value="2">2개월</option><option value="3">3개월</option><option value="4">4개월</option><option value="5">5개월</option><option value="6">6개월</option><option value="7">7개월</option><option value="8">8개월</option><option value="9">9개월</option><option value="10">10개월</option><option value="11">11개월</option><option value="12">12개월</option><option value="13">13개월</option><option value="14">14개월</option><option value="15">15개월</option><option value="16">16개월</option><option value="17">17개월</option><option value="18">18개월</option><option value="19">19개월</option><option value="20">20개월</option><option value="21">21개월</option><option value="22">22개월</option><option value="23">23개월</option><option value="24">24개월</option></select></div>
       </div>
@@ -3474,6 +3476,53 @@ function _dataRows(ws){
 // 개인지급 시트 → personData
 // 업체지급 시트 → bizData
 // ════════════════════════════════════
+// ════════════════════════════════════
+// 예산안 엑셀 가져오기 → budgetCodes 반영
+// 지원 형식: [코드,항목,예산...] 또는 [항목,예산]
+// ════════════════════════════════════
+function importBudgetExcel(input){
+  const file=input.files[0];if(!file)return;input.value='';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
+      // '예산' 포함 시트 우선, 없으면 첫 시트
+      const sn=wb.SheetNames.find(n=>/예산/.test(n))||wb.SheetNames[0];
+      const ws=wb.Sheets[sn];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const _firstNum=(arr,from)=>{for(let i=from;i<arr.length;i++){const n=_parseNum(arr[i]);if(n)return n;}return 0;};
+      const newCodes=[];let auto=1;
+      rows.forEach(r=>{
+        if(!r||!r.length)return;
+        const c0=String(r[0]||'').trim();
+        const c1=String(r[1]||'').trim();
+        // 빈행/제목/헤더/합계 스킵
+        if(!c0&&!c1)return;
+        if(/^(코드|항목|구분|예산|총\s*예산|합\s*계|총\s*계)$/.test(c0))return;
+        if(/예산\s*(집행|요약|안)|캐시플로우/.test(c0))return; // 제목행
+        let code,name,budget;
+        const codeMatch=c0.match(/^\d+$/);
+        if(codeMatch){           // [코드, 항목, 예산...]
+          code=+codeMatch[0]; name=c1; budget=_firstNum(r,2);
+        } else if(c0 && _parseNum(r[1])){ // [항목, 예산]
+          name=c0; budget=_firstNum(r,1); code=auto*100;
+        } else return;
+        if(!name)return;
+        if(newCodes.find(b=>b.code===code))code=(newCodes.reduce((m,b)=>Math.max(m,b.code),0))+100;
+        newCodes.push({code,name,budget:budget||0});
+        auto++;
+      });
+      if(!newCodes.length){showToast('⚠️ 예산 데이터를 찾지 못했습니다. (코드·항목·예산 열 확인)');return;}
+      if(!confirm(`예산안 ${newCodes.length}개 항목을 불러옵니다.\n기존 예산 코드 설정을 덮어씁니다. 진행할까요?`))return;
+      budgetCodes=newCodes.sort((a,b)=>a.code-b.code);
+      try{localStorage.setItem('integrated_budget',JSON.stringify(budgetCodes));}catch(e){}
+      try{dbSet('budget',budgetCodes);}catch(e){}
+      renderBudgetEditList();renderFinal();renderPersonTable();renderBizTable();refreshTransferTable();
+      showToast(`✅ 예산안 ${newCodes.length}개 항목 반영 완료`);
+    }catch(err){console.error(err);showToast('❌ 엑셀 읽기 실패: '+err.message);}
+  };
+  reader.readAsArrayBuffer(file);
+}
 function importMonthlyExcel(input){
   const file=input.files[0];if(!file)return;input.value='';
   const reader=new FileReader();
@@ -3989,8 +4038,8 @@ function renderBudgetEditList(){
   document.getElementById('budget-edit-list').innerHTML=budgetCodes.map((b,i)=>`
     <div class="budget-edit-row">
       <div class="code-lbl">${b.code}</div>
-      <input value="${esc(b.name)}" oninput="budgetCodes[${i}].name=this.value;_debSave('bud${i}',saveBudget)" placeholder="항목명">
-      <input type="text" class="num-input" value="${fmtI(b.budget)}" onfocus="this.value=parseI(this.value)||0" oninput="budgetCodes[${i}].budget=parseI(this.value);_debSave('budamt${i}',saveBudget)" onblur="this.value=fmtI(this.value)" style="text-align:right">
+      <input value="${esc(b.name)}" oninput="budgetCodes[${i}].name=this.value;_debSave('bud${i}',saveBudget)" onkeydown="if(event.key==='Enter'){saveBudget();_flushSettings(event)}" placeholder="항목명">
+      <input type="text" class="num-input" value="${fmtI(b.budget)}" onfocus="this.value=parseI(this.value)||0" oninput="budgetCodes[${i}].budget=parseI(this.value);_debSave('budamt${i}',saveBudget)" onkeydown="if(event.key==='Enter'){saveBudget();_flushSettings(event)}" onblur="this.value=fmtI(this.value)" style="text-align:right">
       <button class="btn btn-danger btn-sm" style="padding:3px 10px;font-size:11px" onclick="removeBudgetCode(${i})">삭제</button>
     </div>`).join('');
 }
@@ -4014,9 +4063,9 @@ function renderCardUserList(){
     <div class="card-user-row">
       <div class="row-h"><span>사용자 ${i+1}</span><button class="btn btn-danger btn-sm" onclick="removeCardUser(${i})">삭제</button></div>
       <div class="cu-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}" oninput="_saveCardUserField(${i},'tabLabel',this.value)" onchange="saveCardUsers()"></div>
-        <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}" oninput="_saveCardUserField(${i},'cardNum',this.value)" onchange="saveCardUsers()"></div>
-        <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}" oninput="_saveCardUserField(${i},'person',this.value)" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>탭 이름</label><input id="cu-label-${i}" value="${esc(c.tabLabel)}" oninput="_saveCardUserField(${i},'tabLabel',this.value)" onkeydown="if(event.key==='Enter'){saveCardUsers();_flushSettings(event)}" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>카드번호</label><input id="cu-num-${i}" value="${esc(c.cardNum)}" oninput="_saveCardUserField(${i},'cardNum',this.value)" onkeydown="if(event.key==='Enter'){saveCardUsers();_flushSettings(event)}" onchange="saveCardUsers()"></div>
+        <div class="cu-field"><label>사용자 이름</label><input id="cu-person-${i}" value="${esc(c.person)}" oninput="_saveCardUserField(${i},'person',this.value)" onkeydown="if(event.key==='Enter'){saveCardUsers();_flushSettings(event)}" onchange="saveCardUsers()"></div>
       </div>
     </div>`;
   const advEl=document.getElementById('card-user-list-선급금');
@@ -4129,6 +4178,17 @@ function persistSettings(){
 }
 // ── 입력 즉시 저장 헬퍼 (debounce) ──
 function _debSave(key,fn,ms){clearTimeout(saveTimer['_d_'+key]);saveTimer['_d_'+key]=setTimeout(fn,ms||3000);}
+// ── 엔터 입력 시 대기중인 모든 설정 저장을 즉시 실행 ──
+function _flushSettings(ev){
+  if(ev&&ev.key!=='Enter')return;
+  clearTimeout(_persistTimer);try{dbSet('settings',appSettings);}catch(e){}
+  clearTimeout(_budgetTimer);try{dbSet('budget',budgetCodes);}catch(e){}
+  clearTimeout(saveTimer.proj);try{dbSet('projectInfo',projectInfo);}catch(e){}
+  // debounce 헬퍼로 등록된 저장도 즉시 실행
+  Object.keys(saveTimer).forEach(k=>{if(k.indexOf('_d_')===0){clearTimeout(saveTimer[k]);}});
+  try{localStorage.setItem('integrated_settings',JSON.stringify(appSettings));localStorage.setItem('integrated_budget',JSON.stringify(budgetCodes));}catch(e){}
+  if(ev){showToast('💾 저장됨');if(ev.target&&ev.target.blur)ev.target.blur();}
+}
 // 카드 사용자 입력칸: 타이핑 즉시 모델 반영 + 3초 후 저장 (입력칸 재렌더 없이)
 function _saveCardUserField(i,field,val){
   if(!appSettings.cards[i])return;
