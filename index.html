@@ -372,13 +372,6 @@ body.role-pending .readonly-banner{display:block;}
       <div id="inv-inner-nav"></div>
       <!-- 개인 지급 (기본 숨김) -->
       <div id="monthly-person" style="display:none">
-        <div class="filter-bar">
-          <span class="filter-label">필터:</span>
-          <select onchange="applyFilter('person','month',this.value)" id="flt-p-month"><option value="">월 전체</option></select>
-          <select onchange="applyFilter('person','code',this.value)" id="flt-p-code"><option value="">코드 전체</option></select>
-          <select onchange="applyFilter('person','category',this.value)" id="flt-p-cat"><option value="">세부항목 전체</option></select>
-          <input type="text" id="flt-p-name" placeholder="이름" oninput="applyFilter('person','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:70px;flex:1">
-        </div>
         <div class="sel-toolbar" id="sel-person">
           <span id="selc-person">0행 선택</span>
           <button class="btn btn-excel btn-sm" onclick="exportSel('person')">📥 엑셀</button>
@@ -404,13 +397,6 @@ body.role-pending .readonly-banner{display:block;}
       </div>
       <!-- 업체 지급 (기본 숨김) -->
       <div id="monthly-biz" style="display:none">
-        <div class="filter-bar">
-          <span class="filter-label">필터:</span>
-          <select onchange="applyFilter('biz','month',this.value)" id="flt-b-month"><option value="">월 전체</option></select>
-          <select onchange="applyFilter('biz','code',this.value)" id="flt-b-code"><option value="">코드 전체</option></select>
-          <select onchange="applyFilter('biz','category',this.value)" id="flt-b-cat"><option value="">세부항목 전체</option></select>
-          <input type="text" id="flt-b-name" placeholder="업체명" oninput="applyFilter('biz','name',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:75px;flex:1">
-        </div>
         <div class="sel-toolbar" id="sel-biz">
           <span id="selc-biz">0행 선택</span>
           <button class="btn btn-excel btn-sm" onclick="exportSel('biz')">📥 엑셀</button>
@@ -466,14 +452,6 @@ body.role-pending .readonly-banner{display:block;}
       <div id="actor-invoice-wrap" style="padding:14px;display:block"></div>
       <!-- 출연료 테이블 (등급 선택 시 표시) -->
       <div id="actor-grade-content" style="display:none">
-        <div class="filter-bar">
-          <span class="filter-label">필터:</span>
-          <select onchange="applyFilter('actor','month',this.value)" id="flt-ac-month"><option value="">월 전체</option></select>
-          <select onchange="applyFilter('actor','code',this.value)" id="flt-ac-code"><option value="">코드 전체</option></select>
-          <input type="text" id="flt-ac-role" placeholder="배역명" oninput="applyFilter('actor','role',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:80px;flex:1">
-          <select onchange="applyFilter('actor','union',this.value)" id="flt-ac-union"><option value="">조합원 전체</option><option value="true">조합원</option><option value="false">비조합원</option></select>
-          <select onchange="applyFilter('actor','type',this.value)" id="flt-ac-type"><option value="">구분 전체</option><option>원징</option><option>세계</option></select>
-        </div>
         <div class="sel-toolbar" id="sel-actor">
           <span id="selc-actor">0행 선택</span>
           <button class="btn btn-excel btn-sm" onclick="exportSel('actor')">📥 엑셀</button>
@@ -1024,11 +1002,9 @@ function switchInvInner(type){
   // 월 필터 자동 적용
   const m=+(currentInvCfg?.month||0);
   if(type==='person'){
-    const s=document.getElementById('flt-p-month');
-    if(s){s.value=m||'';applyFilter('person','month',m?String(m):'');}
+    applyFilter('person','month',m||0); // 필터바 없이 직접 월 필터
   } else if(type==='biz'){
-    const s=document.getElementById('flt-b-month');
-    if(s){s.value=m||'';applyFilter('biz','month',m?String(m):'');}
+    applyFilter('biz','month',m||0);
   } else if(type==='summary'){
     renderInvoice();
   }
@@ -1051,35 +1027,49 @@ function renderInvoice(cfg){
   const today=new Date().toLocaleDateString('ko-KR');
   const mFilter=+thisCfg.month||0;
   const n0=v=>(v||0).toLocaleString('ko-KR');
-  // 개인 + 업체 합산 (청구서는 전체 요약)
-  const rows=[];
+  // 예산코드 → "코드 항목명" 라벨
+  const budgetName=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
+  // 개인 지급 / 업체 지급 분리 수집 (항목=예산코드, 세부항목=category, 이름=name)
+  const persons=[],bizes=[];
   Object.values(personData||{}).forEach(r=>{
     if(mFilter&&+r.month!==mFilter)return;
-    const sup=+r.supply||0,tax=calcTax(sup),ins=calcIns(sup),net=calcPersonNet(sup);
-    rows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat:0,tax,ins,net,type:'person'});
+    const sup=+r.supply||0;
+    const tax=r.taxOverride!==undefined?+r.taxOverride:calcTax(sup);
+    const ins=r.insOverride!==undefined?+r.insOverride:calcIns(sup);
+    persons.push({code:+r.code||0,item:budgetName(r.code),sub:r.category||'',name:r.name||'',supply:sup,vat:0,tax,ins,net:sup-tax-ins});
   });
   Object.values(bizData||{}).forEach(r=>{
     if(mFilter&&+r.month!==mFilter)return;
-    const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0,net=calcBizNet(sup,vat,tax);
-    rows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat,tax,ins:0,net,type:'biz'});
+    const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0;
+    bizes.push({code:+r.code||0,item:budgetName(r.code),sub:r.category||'',name:r.name||'',supply:sup,vat,tax,ins:0,net:calcBizNet(sup,vat,tax)});
   });
-  const totalNet=rows.reduce((a,r)=>a+r.net,0);
-  const totalSupply=rows.reduce((a,r)=>a+r.supply,0);
-  const cats=[...new Set(rows.map(r=>r.cat))];
-  let bodyHtml='';
-  cats.forEach(cat=>{
-    const cRows=rows.filter(r=>r.cat===cat);
-    cRows.forEach((r,i)=>{
-      bodyHtml+=`<tr>
-        ${i===0?`<td rowspan="${cRows.length}" style="text-align:center;font-weight:600;background:#f5f6fa">${esc(cat)}</td>`:''}
-        <td>${esc(r.name)}</td><td style="color:#666;font-size:11px">${esc(r.sub)}</td>
-        <td class="ac">${n0(r.supply)}</td><td class="ac">${n0(r.vat)}</td>
-        <td class="ac">${n0(r.tax)}</td><td class="ac">${n0(r.ins)}</td>
-        <td class="ac" style="font-weight:600">${n0(r.net)}</td>
-      </tr>`;
+  const allRows=[...persons,...bizes];
+  const totalNet=allRows.reduce((a,r)=>a+r.net,0);
+  const totalSupply=allRows.reduce((a,r)=>a+r.supply,0);
+  // 섹션 렌더: 항목별 rowspan 그룹 (예산코드 오름차순 → 세부항목 → 이름)
+  const sectionHtml=(title,list,color)=>{
+    if(!list.length)return '';
+    list.sort((a,b)=>(+a.code||0)-(+b.code||0)||(a.sub||'').localeCompare(b.sub||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
+    const sNet=list.reduce((s,r)=>s+r.net,0);
+    let h=`<tr><td colspan="8" style="background:${color};color:#fff;font-weight:700;padding:7px 10px;font-size:12px">${title} <span style="opacity:.8;font-weight:400">(${list.length}건 · 실지급 ${n0(sNet)}원)</span></td></tr>`;
+    const items=[...new Set(list.map(r=>r.item))];
+    items.forEach(it=>{
+      const iRows=list.filter(r=>r.item===it);
+      iRows.forEach((r,i)=>{
+        h+=`<tr>
+          ${i===0?`<td rowspan="${iRows.length}" style="text-align:center;font-weight:600;background:#f5f6fa">${esc(it)}</td>`:''}
+          <td>${esc(r.sub)}</td><td>${esc(r.name)}</td>
+          <td class="ac">${n0(r.supply)}</td><td class="ac">${n0(r.vat)}</td>
+          <td class="ac">${n0(r.tax)}</td><td class="ac">${n0(r.ins)}</td>
+          <td class="ac" style="font-weight:600">${n0(r.net)}</td>
+        </tr>`;
+      });
     });
-  });
-  if(!rows.length)bodyHtml=`<tr><td colspan="8" class="empty-state">지급 내역이 없습니다.</td></tr>`;
+    return h;
+  };
+  let bodyHtml=sectionHtml('👤 개인 지급',persons,'#2d5016')+sectionHtml('🏢 업체 지급',bizes,'#004d40');
+  if(!allRows.length)bodyHtml=`<tr><td colspan="8" class="empty-state">지급 내역이 없습니다.</td></tr>`;
+  const rows=allRows;
   const tabLabel=monthlyInvLabel(thisCfg);
   wrap.innerHTML=`
     <div style="background:#f8f9fa;border-radius:10px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
@@ -1091,7 +1081,7 @@ function renderInvoice(cfg){
       <div><span style="color:#888;font-weight:600">총 정산금액</span><br><b style="color:#1a237e;font-size:14px">${n0(totalNet)} 원</b></div>
     </div>
     <div class="tbl-wrap"><table class="data-table" style="min-width:900px">
-      <thead><tr><th>항목</th><th>이름/업체명</th><th>세부항목</th><th>지급금액</th><th>부가세</th><th>원천세</th><th>예술인고용보험</th><th>실지급액</th></tr></thead>
+      <thead><tr><th>항목</th><th>세부항목</th><th>이름/업체명</th><th>지급금액</th><th>부가세</th><th>원천세</th><th>예술인고용보험</th><th>실지급액</th></tr></thead>
       <tbody>${bodyHtml}</tbody>
       <tfoot><tr class="total-r">
         <td colspan="3" style="text-align:center">합 계</td>
@@ -1219,8 +1209,7 @@ function switchActorInvInner(type){
   if(isGrade){
     currentActorGrade=type;
     const m=+(currentActorInvCfg?.month||0);
-    const s=document.getElementById('flt-ac-month');
-    if(s){s.value=m||'';applyFilter('actor','month',m?String(m):'');}
+    applyFilter('actor','month',m||0); // 필터바 없이 직접 월 필터
     renderActorTable();
   } else {
     renderActorInvoice();
@@ -1248,12 +1237,12 @@ function renderActorInvoice(){
     if(mFilter&&+r.month!==mFilter)return;
     if(!grades.includes(r.grade||'기타'))return; // 탭에 포함된 등급만
     const c=calcActor(r);
-    rows.push({grade:r.grade||'기타',name:r.name||'',role:r.role||'',fee:c.feeTot,deduct:c.deductions,net:c.netPay});
+    rows.push({code:+r.code||0,grade:r.grade||'기타',name:r.name||'',role:r.role||'',fee:c.feeTot,deduct:c.deductions,net:c.netPay});
   });
   const totalNet=rows.reduce((a,r)=>a+r.net,0);
   let bodyHtml='';
   grades.forEach(grade=>{
-    const gRows=rows.filter(r=>r.grade===grade);
+    const gRows=rows.filter(r=>r.grade===grade).sort((a,b)=>(+a.code||0)-(+b.code||0)||(a.role||'').localeCompare(b.role||'','ko')||(a.name||'').localeCompare(b.name||'','ko')); // 예산코드 오름차순
     if(!gRows.length)return;
     gRows.forEach((r,i)=>{
       bodyHtml+=`<tr>
@@ -1425,7 +1414,7 @@ function renderActorTable(){
     if(f.month&&+r.month!==+f.month)return false;
     if(f.type&&r.type!==f.type)return false;
     return true;
-  });
+  }).sort(([,a],[,b])=>(+a.code||0)-(+b.code||0)||(a.role||'').localeCompare(b.role||'','ko')||(a.name||'').localeCompare(b.name||'','ko')); // 예산코드 오름차순 자동 정렬
   const colCount=isSimple?22:24;
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="${colCount}" class="empty-state">${currentActorGrade} 출연료 정산 내역이 없습니다.</td></tr>`;updateActorTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
@@ -1467,9 +1456,15 @@ function renderActorTable(){
   initColResize('actor-table');autoFitCols('actor-table');
 }
 function updateActorTotals(){
-  // 전체 합산 (최종정산용) 은 renderFinal에서 actorData 전체 사용
-  // tfoot에는 현재 등급 합산만 표시
-  const gradeData=Object.values(actorData||{}).filter(r=>r.grade===currentActorGrade);
+  // ★ 화면에 표시된 행과 동일하게: 현재 등급 + 필터(월/코드/구분) 적용 후 합산
+  const f=filters['actor']||{};
+  const gradeData=Object.values(actorData||{}).filter(r=>{
+    if(r.grade!==currentActorGrade)return false;
+    if(f.code&&+r.code!==+f.code)return false;
+    if(f.month&&+r.month!==+f.month)return false;
+    if(f.type&&r.type!==f.type)return false;
+    return true;
+  });
   const s={fee:0,extra:0,settled:0,ins:0,vat:0,union:0,itax:0,rtax:0,eins:0,deduct:0,net:0,total:0};
   gradeData.forEach(r=>{const c=calcActor(r);s.fee+=c.feeTot;s.extra+=(+r.extra||0);s.settled+=c.settled;s.ins+=c.insComp;s.vat+=c.vat;s.union+=c.unionFee;s.itax+=c.incomeTax;s.rtax+=c.resTax;s.eins+=c.insEmp;s.deduct+=c.deductions;s.net+=c.netPay;s.total+=c.totalCost;});
   setText('at-fee',fmtNum(s.fee));
@@ -1728,7 +1723,10 @@ function renderFinal(){
   // 예산코드별 월별 집행 현황
   const cfAllRows=getAllTransactions();
   const cfYear=projectInfo.year||2025;
-  const cfStartM=projectInfo.startMonth||1;
+  const _cfgStartM=projectInfo.startMonth||1;
+  // ★ 데이터에 설정 시작월보다 이른 월이 있으면 그 월부터 시작 (예: 시작월 4월인데 3월 데이터 → 3월부터)
+  const _dataMonths=cfAllRows.map(r=>+r.month).filter(m=>m>=1&&m<=12);
+  const cfStartM=_dataMonths.length?Math.min(_cfgStartM,...new Set(_dataMonths)):_cfgStartM;
   const cfOpM=projectInfo.opMonths||12;
   // 운영 개월 수만큼 레이블·실제월 배열 생성
   const monthLabels=Array.from({length:cfOpM},(_,i)=>{
@@ -1742,10 +1740,16 @@ function renderFinal(){
   let cfHtml='';
   const monthTotals=new Array(cfOpM).fill(0);
   let cfGrandTotal=0;
+  // 월 번호 → 첫(가장 이른) 컬럼 인덱스 매핑 (운영 13개월+ 시 같은 월의 다음해 중복 방지)
+  const monthFirstCol={};
+  monthNums.forEach((mn,i)=>{if(monthFirstCol[mn]===undefined)monthFirstCol[mn]=i;});
   budgetCodes.forEach(b=>{
-    const monthAmts=Array.from({length:cfOpM},(_,i)=>
-      cfAllRows.filter(r=>+r.code===b.code&&+r.month===monthNums[i]).reduce((s,r)=>s+(+r.supply||0),0)
-    );
+    const monthAmts=new Array(cfOpM).fill(0);
+    cfAllRows.forEach(r=>{
+      if(+r.code!==b.code)return;
+      const col=monthFirstCol[+r.month];
+      if(col!==undefined)monthAmts[col]+=(+r.supply||0);
+    });
     const codeTotal=monthAmts.reduce((s,v)=>s+v,0);
     monthAmts.forEach((v,i)=>monthTotals[i]+=v);
     cfGrandTotal+=codeTotal;
@@ -1770,7 +1774,8 @@ function renderFinal(){
 // ════════════════════════════════════════════
 function renderPersonTable(){
   const tbody=document.getElementById('body-person');if(!tbody)return;
-  const filt=getFiltered('person');
+  // 예산코드 오름차순 자동 정렬 → 세부항목 → 이름
+  const filt=getFiltered('person').sort(([,a],[,b])=>(+a.code||0)-(+b.code||0)||(a.category||'').localeCompare(b.category||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="15" class="empty-state">개인 지급 내역이 없습니다.</td></tr>`;updatePersonTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const tax=calcTax(+r.supply||0),ins=calcIns(+r.supply||0),net=calcPersonNet(+r.supply||0);
@@ -1803,7 +1808,8 @@ function calcPersonNetEff(r){
   return sup-tax-ins;
 }
 function updatePersonTotals(){
-  const all=Object.values(personData||{});
+  // ★ 화면에 표시된(필터 적용) 행만 합산
+  const all=getFiltered('person').map(([,r])=>r);
   const s={sup:0,tax:0,ins:0,net:0};
   all.forEach(r=>{
     const sup=+r.supply||0;
@@ -1842,7 +1848,8 @@ function delPerson(id){
 // ════════════════════════════════════════════
 function renderBizTable(){
   const tbody=document.getElementById('body-biz');if(!tbody)return;
-  const filt=getFiltered('biz');
+  // 예산코드 오름차순 자동 정렬 → 세부항목 → 업체명
+  const filt=getFiltered('biz').sort(([,a],[,b])=>(+a.code||0)-(+b.code||0)||(a.category||'').localeCompare(b.category||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="15" class="empty-state">업체 지급 내역이 없습니다.</td></tr>`;updateBizTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const net=calcBizNet(+r.supply||0,+r.vat||0,+r.tax||0);
@@ -1869,7 +1876,8 @@ function renderBizTable(){
   initColResize('body-biz');autoFitCols('body-biz');
 }
 function updateBizTotals(){
-  const all=Object.values(bizData||{});
+  // ★ 화면에 표시된(필터 적용) 행만 합산
+  const all=getFiltered('biz').map(([,r])=>r);
   const s={sup:0,vat:0,tax:0,net:0};
   all.forEach(r=>{s.sup+=(+r.supply||0);s.vat+=(+r.vat||0);s.tax+=(+r.tax||0);s.net+=calcBizNet(+r.supply||0,+r.vat||0,+r.tax||0);});
   setText('bt-sup',fmtNum(s.sup));setText('bt-vat',fmtNum(s.vat));setText('bt-tax',fmtNum(s.tax));setText('bt-net',fmtNum(s.net));
@@ -1926,6 +1934,9 @@ function buildCorpTabs(){
   wrap.innerHTML=html;
   // 현재 카드탭이 필터에서 빠졌으면 정산서로 리셋
   if(currentCorpTab!=='corp-invoice'&&!corpCards.find(c=>c.id===currentCorpTab))currentCorpTab='corp-invoice';
+  // 현재 선택된 정산서탭의 월을 각 카드 패널 필터에 반영 (초기 로드 포함)
+  const _m=+(currentCorpInvCfg?.month||0);
+  corpCards.forEach(c=>{if(!filters[c.id])filters[c.id]={};filters[c.id].month=_m||0;});
   switchCorpTab(currentCorpTab||'corp-invoice');
   corpCards.forEach(c=>refreshCardTable(c.id));
 }
@@ -2475,11 +2486,10 @@ function switchCorpInvTab(id){
   currentCorpTab='corp-invoice'; // 월 전환 시 정산서 뷰로 리셋
   // ★ 카드 하위탭 재구성 (선택된 월의 설정 사용자만 표시) + 정산서 렌더
   buildCorpTabs();
-  // 각 카드 패널에 월 필터 적용 (buildCorpTabs로 DOM 재생성 후)
+  // 각 법인카드 패널에 월 필터 직접 적용 (필터바 없이도 동작)
   const m=+(_tab?.month||0);
   appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드').forEach(card=>{
-    const sel=document.getElementById(`flt-${card.id}-month`);
-    if(sel){sel.value=m||'';applyFilter(card.id,'month',m||0);}
+    applyFilter(card.id,'month',m||0);
   });
 }
 function renderCorpInvoice(){
@@ -2696,11 +2706,6 @@ function buildTransferPanel(){
           <button class="btn btn-sm" style="background:#5c6bc0;color:#fff;font-size:11px;padding:4px 10px" onclick="document.getElementById('adv-import-file-main').click()">📤 엑셀가져오기</button>
         </div>
       </div>
-      <div class="filter-bar">
-        <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('transfer','code',this.value)" id="flt-tr-code"><option value="">코드 전체</option></select>
-        <select onchange="applyFilter('transfer','month',this.value)" id="flt-tr-month"><option value="">월 전체</option></select>
-      </div>
       <div class="sel-toolbar" id="sel-transfer">
         <span id="selc-transfer">0행 선택됨</span>
         <button class="btn btn-excel btn-sm" onclick="exportSel('transfer')">📥 엑셀</button>
@@ -2728,6 +2733,8 @@ function buildTransferPanel(){
 }
 function buildCardPanel(card,active){
   const cid=card.id;
+  // 개별 카드 탭 필터바 제거 (월/차수는 상위 정산서·청구서 탭에서 결정)
+  const filterBar='';
   return `<div id="cpanel-${cid}" style="display:${active?'block':'none'}">
     <div class="card">
       <div class="card-header">💳 ${esc(card.cardNum)} (${esc(card.person)})
@@ -2737,15 +2744,7 @@ function buildCardPanel(card,active){
           <button class="btn btn-sm" style="background:#5c6bc0;color:#fff;font-size:11px;padding:4px 10px" onclick="document.getElementById('${card.type==='선급금'?'adv-import-file-main':'corp-import-file'}').click()">📤 엑셀가져오기</button>
         </div>
       </div>
-      <div class="filter-bar">
-        <span class="filter-label">필터:</span>
-        <select onchange="applyFilter('${cid}','month',+this.value||0)" id="flt-${cid}-month"><option value="">월 전체</option></select>
-        <select onchange="applyFilter('${cid}','code',+this.value||0)" id="flt-${cid}-code"><option value="">코드 전체</option></select>
-        <select onchange="applyFilter('${cid}','middle',this.value)" id="flt-${cid}-mid"><option value="">중항목 전체</option></select>
-        <select onchange="applyFilter('${cid}','minor',this.value)" id="flt-${cid}-minor"><option value="">소항목 전체</option></select>
-        <input type="date" id="flt-${cid}-date" onchange="applyFilter('${cid}','date',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit">
-        <input type="text" id="flt-${cid}-detail" placeholder="세부내역" oninput="applyFilter('${cid}','detail',this.value)" style="padding:6px 9px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:12px;font-family:inherit;min-width:90px;flex:1">
-      </div>
+      ${filterBar}
       <div class="sel-toolbar" id="sel-${cid}">
         <span id="selc-${cid}">0행 선택</span>
         <button class="btn btn-excel btn-sm" onclick="exportSel('${cid}')">📥 엑셀</button>
@@ -3465,9 +3464,18 @@ function _pushRow(path,row,localObj){
 // 엑셀 시트에서 데이터 행만 추출 (제목+헤더 2행 스킵, 합계행 스킵)
 function _dataRows(ws){
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
-  return rows.slice(2).filter((r,i,a)=>{
+  // 헤더 행 자동 탐지 (앞 6행 내에서 헤더 키워드 포함 행)
+  let hdr=-1;
+  for(let i=0;i<Math.min(rows.length,6);i++){
+    const j=(rows[i]||[]).map(x=>String(x||'').trim()).join('|');
+    if(/(^|\|)(월|항목|코드|예산코드)(\||$)/.test(j)||/이름|업체명|성명|배역|공급가|금액|중항목|소항목/.test(j)){hdr=i;break;}
+  }
+  const start=hdr>=0?hdr+1:1; // 헤더 다음 행부터, 못 찾으면 1행만 스킵
+  return rows.slice(start).filter(r=>{
     const f=String(r[0]||'').trim();
-    return i<a.length-1&&f!==''&&!/^합\s*계$/.test(f);
+    if(/^(합\s*계|총\s*계|소\s*계)$/.test(f))return false;   // 합계/소계 행만 제외
+    if((r||[]).every(c=>String(c||'').trim()===''))return false; // 완전 빈 행 제외
+    return true; // ★ 마지막 데이터 행도 보존 (기존엔 무조건 버림)
   });
 }
 
@@ -3831,7 +3839,8 @@ function refreshCardTable(cid){
       <td><button class="btn btn-danger btn-sm" onclick="delCard('${cid}','${id}')">✕</button></td>
     </tr>`;
   }).join('');
-  const tot=Object.values(cardData[cid]||{}).reduce((s,r)=>s+(+r.amount||0),0);
+  // ★ 총계는 화면에 표시된(필터 적용된) 행만 합산
+  const tot=filt.reduce((s,[,r])=>s+(+r.amount||0),0);
   const te=document.getElementById(`total-${cid}`);if(te)te.textContent=fmtNum(tot);
   buildFilterOpts(cid); updateSelToolbar(cid);
   initColResize(`body-${cid}`);autoFitCols(`body-${cid}`);
@@ -3924,7 +3933,8 @@ function refreshTransferTable(){
   initColResize('body-transfer');autoFitCols('body-transfer');
 }
 function updateTransferTotals(){
-  const all=Object.values(transferData||{});
+  // ★ 화면에 표시된(필터 적용) 행만 합산
+  const all=getFiltered('transfer').map(([,r])=>r);
   const s={sup:0,vat:0,tax:0,ins:0,net:0};
   all.forEach(r=>{s.sup+=(+r.supply||0);s.vat+=(+r.vat||0);s.tax+=(+r.tax||0);s.ins+=(+r.insurance||0);s.net+=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);});
   setText('tr-sup',fmtNum(s.sup));setText('tr-vat',fmtNum(s.vat));setText('tr-tax',fmtNum(s.tax));setText('tr-ins',fmtNum(s.ins));setText('tr-net',fmtNum(s.net));
@@ -5096,6 +5106,32 @@ function revokeUser(key){
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();pwaPrompt=e;document.getElementById('inst-banner').classList.add('show');});
 function installPWA(){if(pwaPrompt){pwaPrompt.prompt();pwaPrompt.userChoice.then(()=>{pwaPrompt=null;document.getElementById('inst-banner').classList.remove('show');});}}
+
+// ════════════════════════════════════════════
+// 표 입력칸 Tab 이동 — 값 변경으로 표가 재렌더돼도 다음 입력칸으로 정확히 이동
+// ════════════════════════════════════════════
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Tab')return;
+  const el=e.target;
+  if(!el||(el.tagName!=='INPUT'&&el.tagName!=='SELECT'))return;
+  if(el.type==='checkbox')return;
+  const tr=el.closest('tr');const tbl=el.closest('table');
+  if(!tr||!tr.id||!tbl)return; // 표(행 id 있는 셀) 안의 입력만 처리. 설정탭 등은 기본 동작
+  e.preventDefault();
+  const colIdx=[...tr.children].indexOf(el.closest('td'));
+  const rowId=tr.id;const shift=e.shiftKey;
+  el.blur(); // 값 변경 커밋 (필요 시 표 재렌더 발생)
+  setTimeout(function(){
+    const row=document.getElementById(rowId);if(!row)return;
+    const t2=row.closest('table');if(!t2)return;
+    const foc=[...t2.querySelectorAll('input:not([type=checkbox]),select')].filter(x=>!x.disabled&&x.offsetParent!==null);
+    const aCell=row.children[colIdx];
+    const anchor=(aCell&&aCell.querySelector('input,select'))||row.querySelector('input:not([type=checkbox]),select');
+    const i=foc.indexOf(anchor);if(i<0)return;
+    const nx=foc[shift?i-1:i+1];
+    if(nx){nx.focus();if(nx.select){try{nx.select();}catch(_){}}}
+  },0);
+},true);
 
 // ════════════════════════════════════════════
 // 시작 — load 이벤트 후 실행 (Firebase 모듈 완료 보장)
