@@ -73,12 +73,12 @@ body{font-family:'Malgun Gothic','맑은 고딕',Arial,sans-serif;background:#f0
 .tabs-wrapper{background:#fff;border-bottom:2px solid #e0e0e0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .tabs-wrapper::-webkit-scrollbar{display:none}
 .tabs{display:flex;min-width:max-content;padding:0 6px}
-.tab{padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#666;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;user-select:none}
+.tab{padding:10px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#666;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;user-select:none;display:inline-flex;align-items:center;line-height:1.2}
 .tab:hover{color:#1a237e;background:#f5f5f5}
 .tab.active{color:#1a237e;border-bottom-color:#1a237e}
 /* ── Sub-tabs ── */
 .sub-tabs{display:flex;gap:6px;padding:10px 14px 0;border-bottom:1px solid #e0e0e0;background:#fafafa}
-.sub-tab{padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#888;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;transition:all .2s}
+.sub-tab{padding:7px 14px;cursor:pointer;font-size:12px;font-weight:600;color:#888;border-radius:8px 8px 0 0;border:1px solid transparent;border-bottom:none;background:transparent;transition:all .2s;display:inline-flex;align-items:center;line-height:1.2}
 .sub-tab.active{color:#1a237e;background:#fff;border-color:#e0e0e0;border-bottom-color:#fff;margin-bottom:-1px}
 .sub-tab-content{display:none}.sub-tab-content.active{display:block}
 /* ── Layout ── */
@@ -805,9 +805,27 @@ function startDemo(){demoMode=true;document.getElementById('setup-screen').style
 // ════════════════════════════════════════════
 // 초기화
 // ════════════════════════════════════════════
+function _firstAdvInvTabId(){const t=_toArr(appSettings.advInvTabs||[]).filter(Boolean)[0];return t?t.id:'';}
+// 레거시(빈 tabId) 선급금 정산행·계좌이체를 첫 차수로 귀속 (차수 격리 정상화)
+function _migrateAdvTabIds(){
+  const first=_firstAdvInvTabId();if(!first)return;
+  let changed=false;
+  // 계좌이체: tabId 없으면 첫 차수
+  Object.entries(transferData||{}).forEach(([id,r])=>{
+    if(!r.tabId){r.tabId=first;changed=true;if(isFirebase)dbUpdate(`transfer/${id}`,{tabId:first});}
+  });
+  // 선급금 개별탭 정산행(청구서 아님)에 tabId 없으면 첫 차수
+  appSettings.cards.filter(c=>c.type==='선급금').forEach(card=>{
+    Object.entries(cardData[card.id]||{}).forEach(([id,r])=>{
+      if(!_isAdvBillRow(r)&&!r.tabId){r.tabId=first;r.bill=false;changed=true;if(isFirebase)dbUpdate(`cards/${card.id}/${id}`,{tabId:first,bill:false});}
+    });
+  });
+  if(changed)persistCardsLocal();
+}
 function appInit(){
   loadLocalSettings();
   appSettings.cards.forEach(c=>{if(!cardData[c.id])cardData[c.id]={};if(!selected[c.id])selected[c.id]=new Set();if(!filters[c.id])filters[c.id]={};});
+  try{_migrateAdvTabIds();}catch(e){console.warn('adv 마이그레이션:',e);}
   buildCorpTabs();buildAdvTabs();
   renderBudgetEditList();
   renderCardUserList();
@@ -1034,7 +1052,7 @@ function renderInvInnerNav(){
   const nav=document.getElementById('inv-inner-nav');if(!nav)return;
   const tabs=[{id:'summary',label:'📋 정산서'},{id:'person',label:'개인 지급'},{id:'biz',label:'업체 지급'}];
   nav.innerHTML=`<div style="display:flex;border-bottom:2px solid #e8eaf6;background:#f8f9ff;padding:0 4px">
-    ${tabs.map(t=>`<div onclick="switchInvInner('${t.id}')" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:${currentInvInner===t.id?'#3949ab':'#888'};border-bottom:3px solid ${currentInvInner===t.id?'#3949ab':'transparent'};margin-bottom:-2px;white-space:nowrap">${t.label}</div>`).join('')}
+    ${tabs.map(t=>`<div onclick="switchInvInner('${t.id}')" style="display:inline-flex;align-items:center;line-height:1.2;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:${currentInvInner===t.id?'#3949ab':'#888'};border-bottom:3px solid ${currentInvInner===t.id?'#3949ab':'transparent'};margin-bottom:-2px;white-space:nowrap">${t.label}</div>`).join('')}
   </div>`;
 }
 function renderInvoice(cfg){
@@ -1241,7 +1259,7 @@ function renderActorInvInnerNav(){
   const grades=_toArr(currentActorInvCfg?.grades||[]).length?_toArr(currentActorInvCfg.grades):(appSettings.actorGrades||['주연','조연','단역','무술']);
   const tabs=[{id:'summary',label:'📋 정산서'},...grades.map(g=>({id:g,label:g}))];
   nav.innerHTML=`<div style="display:flex;border-bottom:2px solid #e8eaf6;background:#f8f9ff;padding:0 4px">
-    ${tabs.map(t=>`<div onclick="switchActorInvInner('${t.id}')" style="padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:${currentActorInvInner===t.id?'#880e4f':'#888'};border-bottom:3px solid ${currentActorInvInner===t.id?'#880e4f':'transparent'};margin-bottom:-2px;white-space:nowrap">${t.label}</div>`).join('')}
+    ${tabs.map(t=>`<div onclick="switchActorInvInner('${t.id}')" style="display:inline-flex;align-items:center;line-height:1.2;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;color:${currentActorInvInner===t.id?'#880e4f':'#888'};border-bottom:3px solid ${currentActorInvInner===t.id?'#880e4f':'transparent'};margin-bottom:-2px;white-space:nowrap">${t.label}</div>`).join('')}
   </div>`;
 }
 function renderActorInvoice(){
@@ -2005,7 +2023,8 @@ function switchAdvSettTab(id){
   currentAdvSettTab=id;
   currentAdvSettCfg=_toArr(appSettings.advSettTabs||[]).filter(Boolean).find(t=>t&&t.id===id)||{seq:'1차',id};
   const si=(appSettings.advSettlements||{})[id]||{};
-  const pb=document.getElementById('s-prev-bal');if(pb)pb.value=fmtI(si.prevBalance||0);
+  // 전월잔액: 2차 이상은 이전 차수 잔액 자동, 1차는 저장값
+  const pb=document.getElementById('s-prev-bal');if(pb)pb.value=fmtI(getAdvPrevBalance(id));
   const adv=document.getElementById('s-advance');if(adv)adv.value=fmtI(si.advance||0);
   const ol=document.getElementById('s-other-label');if(ol)ol.value=si.otherLabel||'기타 수입';
   const oa=document.getElementById('s-other');if(oa)oa.value=fmtI(si.otherAmt||0);
@@ -2077,6 +2096,41 @@ function calcAdvBalance(tid,override){
   });
   return totalIncome-totExp;
 }
+// ── 차수 체인 잔액 계산 (renderSettlementAdv와 동일 계산식) ──
+// 청구서 행 판별: bill 명시되면 그 값, 미정(구버전)이면 tabId 있는 행을 청구서로 간주
+function _isAdvBillRow(r){return r&&(r.bill!==undefined?r.bill:!!r.tabId);}
+// 반환: 해당 정산서 탭의 잔액(반납/이월) = 청구금액(수령) − 정산금액(실지출)
+function getAdvSettBalance(tid,_seen){
+  _seen=_seen||{};
+  if(_seen[tid])return 0; // 순환 방지
+  _seen[tid]=1;
+  const tabs=_ta(appSettings.advSettTabs||[]).filter(Boolean);
+  const idx=tabs.findIndex(t=>t.id===tid);
+  const si=(appSettings.advSettlements||{})[tid]||{};
+  // 전월잔액: 첫 탭이면 입력값, 아니면 이전 차수 잔액(체인)
+  const prevBal=idx<=0?(+si.prevBalance||0):getAdvSettBalance(tabs[idx-1].id,_seen);
+  // 청구금액(수령) = 전월 + 청구서합계(bill 행, 이 차수) + 기타수입
+  const invTabId=(appSettings.advInvTabs||[]).find(t=>t.settId===tid)?.id;
+  let billed=0;
+  appSettings.cards.filter(c=>c.type==='선급금').forEach(card=>Object.values(cardData[card.id]||{}).forEach(r=>{
+    if(_isAdvBillRow(r)&&r.tabId===invTabId)billed+=(+r.amount||0);
+  }));
+  const income=prevBal+billed+(+si.otherAmt||0);
+  // 정산금액(실지출) = 이 차수 정산행(청구서 제외) + 이 차수 계좌이체
+  let exp=0;
+  appSettings.cards.filter(c=>c.type==='선급금').forEach(card=>Object.values(cardData[card.id]||{}).forEach(r=>{
+    if(!_isAdvBillRow(r)&&r.tabId===invTabId)exp+=(+r.amount||0);
+  }));
+  Object.values(transferData||{}).forEach(r=>{if(r.tabId===invTabId)exp+=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);});
+  return income-exp;
+}
+// 현재 정산서 탭의 전월잔액(=이전 차수 잔액). 첫 탭이면 저장된 입력값
+function getAdvPrevBalance(tid){
+  const tabs=_ta(appSettings.advSettTabs||[]).filter(Boolean);
+  const idx=tabs.findIndex(t=>t.id===tid);
+  if(idx<=0)return +((appSettings.advSettlements||{})[tid]||{}).prevBalance||0;
+  return getAdvSettBalance(tabs[idx-1].id);
+}
 // 이전 차수 잔액을 현재 탭 전월잔액에 수동 자동반영
 function autoFillPrevBalance(){
   const tid=currentAdvSettTab||'advsett1';
@@ -2097,19 +2151,7 @@ function saveAdvSettlementInfo(){
   const otherAmt=parseI(document.getElementById('s-other')?.value)||0;
   const otherLabel=document.getElementById('s-other-label')?.value||'기타 수입';
   appSettings.advSettlements[tid]={prevBalance,advance,otherAmt,otherLabel};
-  // 다음 차수 정산서의 전월잔액에 현 차수 계좌잔액 자동 반영
-  const tabs=_ta(appSettings.advSettTabs||[]).filter(Boolean);
-  const idx=tabs.findIndex(t=>t.id===tid);
-  if(idx>=0&&idx<tabs.length-1){
-    const nextTid=tabs[idx+1].id;
-    const bal=calcAdvBalance(tid,{prevBalance,advance,otherAmt});
-    if(!appSettings.advSettlements[nextTid])appSettings.advSettlements[nextTid]={prevBalance:0,advance:0,otherAmt:0,otherLabel:'기타 수입'};
-    appSettings.advSettlements[nextTid].prevBalance=bal;
-    // 현재 다음 차수 탭을 보고 있다면 UI도 즉시 반영
-    if(currentAdvSettTab===nextTid){
-      const pb=document.getElementById('s-prev-bal');if(pb)pb.value=fmtI(bal);
-    }
-  }
+  // 다음 차수 전월잔액은 getAdvSettBalance 체인이 렌더 시 자동 계산하므로 별도 전파 불필요
   persistSettings();
   renderSettlementAdv();
 }
@@ -2170,7 +2212,8 @@ function renderAdvInvoice(){
   let allRows=[];
   advCards.forEach(card=>{
     Object.entries(cardData[card.id]||{}).forEach(([rid,r])=>{
-      if(r.tabId?r.tabId===tabId:!tabId) allRows.push({...r,_cid:card.id,_rid:rid});
+      // 청구서: 이 차수(tabId)의 청구서 행만 표시
+      if(_isAdvBillRow(r)&&(r.tabId?r.tabId===tabId:!tabId)) allRows.push({...r,_cid:card.id,_rid:rid});
     });
   });
   allRows.sort((a,b)=>(a.date||'zzz').localeCompare(b.date||'zzz'));
@@ -2185,11 +2228,11 @@ function renderAdvInvoice(){
     allRows.forEach((r,i)=>{
       const cid=r._cid,rid=r._rid;
       const amtFmt=r.amount?n0(r.amount):'0';
-      tableRows+=`<tr style="border-bottom:1px solid #e8eaf6">
+      tableRows+=`<tr id="advr-${cid}-${rid}" style="border-bottom:1px solid #e8eaf6">
         <td style="border:1px solid #ddd;padding:5px;text-align:center;font-size:12px;color:#aaa;width:34px;background:#fafafa">${i+1}</td>
         <td style="border:1px solid #ddd;padding:4px 5px;min-width:110px">
           <input value="${esc(r.middle||'')}" placeholder="항목" style="${inS}"
-            onchange="saveAdvInvRow('${cid}','${rid}','middle',this.value)" onblur="renderAdvInvoice()"></td>
+            onchange="saveAdvInvRow('${cid}','${rid}','middle',this.value)"></td>
         <td style="border:1px solid #ddd;padding:4px 5px;min-width:100px">
           <input value="${esc(r.minor||'')}" placeholder="소항목" style="${inS}"
             onchange="saveAdvInvRow('${cid}','${rid}','minor',this.value)"></td>
@@ -2197,7 +2240,7 @@ function renderAdvInvoice(){
           <input value="${amtFmt}" type="text" placeholder="0" style="${inSR}"
             onfocus="this.value=String(+String(this.value).replace(/[^0-9]/g,'')||'')"
             onblur="this.value=this.value?(+this.value).toLocaleString('ko-KR'):'0'"
-            onchange="saveAdvInvRow('${cid}','${rid}','amount',+String(this.value).replace(/[^0-9]/g,''));renderAdvInvoice()"></td>
+            onchange="saveAdvInvRow('${cid}','${rid}','amount',+String(this.value).replace(/[^0-9]/g,''))"></td>
         <td style="border:1px solid #ddd;padding:4px 5px;min-width:130px">
           <input value="${esc(r.detail||'')}" placeholder="산출내역" style="${inS}"
             onchange="saveAdvInvRow('${cid}','${rid}','detail',this.value)"></td>
@@ -2304,7 +2347,7 @@ function addAdvInvRow(){
   const advCards=_tabIds.length?_allAdv.filter(c=>_tabIds.includes(c.id)):_allAdv;
   if(!advCards.length){showToast('설정 탭에서 선급금 사용자를 먼저 추가해주세요.');return;}
   const card=advCards[0];
-  const row={tabId:currentAdvInvTab,month:new Date().getMonth()+1,code:budgetCodes[0]?.code||1500,middle:'',minor:'',date:'',detail:'',amount:0,proof:'',vendor:''};
+  const row={tabId:currentAdvInvTab,bill:true,month:new Date().getMonth()+1,code:budgetCodes[0]?.code||1500,middle:'',minor:'',date:'',detail:'',amount:0,proof:'',vendor:''};
   if(!cardData[card.id])cardData[card.id]={};
   if(isFirebase){
     const ref=window.__fbi.push(window.__fbi.ref(`${DB}/cards/${card.id}`),row);
@@ -2348,7 +2391,7 @@ function addAdvInvTab(){
     if(!cardData[_ownerId])cardData[_ownerId]={};
     for(let i=0;i<5;i++){
       const rid='r'+(ts+i);
-      const row={tabId:id,month:new Date().getMonth()+1,code:budgetCodes[0]?.code||1500,middle:'',minor:'',date:'',detail:'',amount:0,proof:'',vendor:''};
+      const row={tabId:id,bill:true,month:new Date().getMonth()+1,code:budgetCodes[0]?.code||1500,middle:'',minor:'',date:'',detail:'',amount:0,proof:'',vendor:''};
       cardData[_ownerId][rid]=row;
       dbSet(`cards/${_ownerId}/${rid}`,row);
     }
@@ -2854,24 +2897,24 @@ function buildAdvSettlementPanel(){
         </div>
       </div>
       <div class="card-body">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
-          <div>
-            <label style="${lbl};display:flex;align-items:center;gap:6px">전월 계좌잔액
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;align-items:end">
+          <div style="display:flex;flex-direction:column">
+            <label style="${lbl};display:flex;align-items:center;gap:6px;min-height:22px">전월 계좌잔액
               <button onclick="autoFillPrevBalance()" title="이전 차수 잔액 자동계산" style="font-size:10px;padding:1px 6px;border:1px solid #90a4ae;border-radius:4px;background:#e8f5e9;color:#2e7d32;cursor:pointer;line-height:1.5">↩ 자동반영</button>
             </label>
             <input type="text" class="num-input" id="s-prev-bal" value="${fmtI(si.prevBalance||0)}"
               onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementAdv()"
               onchange="saveAdvSettlementInfo()" style="${inp}">
           </div>
-          <div>
-            <label style="${lbl}">선급금 수령액</label>
+          <div style="display:flex;flex-direction:column">
+            <label style="${lbl};min-height:22px;display:flex;align-items:center">선급금 수령액</label>
             <input type="text" class="num-input" id="s-advance" value="${fmtI(si.advance||0)}"
               onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementAdv()"
               onchange="saveAdvSettlementInfo()" style="${inp}">
           </div>
-          <div>
+          <div style="display:flex;flex-direction:column">
             <input id="s-other-label" value="${esc(si.otherLabel||'기타 수입')}" onchange="saveAdvSettlementInfo()"
-              style="${lbl};border:none;background:transparent;padding:0;cursor:text">
+              style="${lbl};border:none;background:transparent;padding:0;cursor:text;min-height:22px">
             <input type="text" class="num-input" id="s-other" value="${fmtI(si.otherAmt||0)}"
               onfocus="this.value=parseI(this.value)||0" onblur="this.value=fmtI(this.value);renderSettlementAdv()"
               onchange="saveAdvSettlementInfo()" style="${inp}">
@@ -2887,17 +2930,25 @@ function renderSettlementAdv(){
   const el=document.getElementById('settlement-table-wrap-adv');if(!el)return;
   const tid=currentAdvSettTab||'advsett1';
   const si=(appSettings.advSettlements||{})[tid]||appSettings.settlementInfo||{};
-  const prevBal=parseI(document.getElementById('s-prev-bal')?.value??si.prevBalance??0);
+  // ★ 전월 계좌 잔액: 1차는 저장값(전차수 없으면 0), 2차 이상은 이전 차수 잔액(반납/이월) 자동
+  const _settTabs=_ta(appSettings.advSettTabs||[]).filter(Boolean);
+  const _settIdx=_settTabs.findIndex(t=>t.id===tid);
+  const _isFirstSett=_settIdx<=0;
+  const prevBal=_isFirstSett?(+si.prevBalance||0):getAdvPrevBalance(tid);
+  // 전월잔액 입력칸: 1차는 저장값 표시(편집 가능), 2차+는 자동값(읽기전용)
+  const _pbEl=document.getElementById('s-prev-bal');
+  if(_pbEl&&!_isFirstSett){_pbEl.value=fmtI(prevBal);_pbEl.readOnly=true;_pbEl.title='이전 차수 잔액 자동 반영';_pbEl.style.background='#f0f0f0';}
+  else if(_pbEl){_pbEl.value=fmtI(prevBal);_pbEl.readOnly=false;_pbEl.title='';_pbEl.style.background='';}
   const otherAmt=parseI(document.getElementById('s-other')?.value??si.otherAmt??0);
   const otherLabel=document.getElementById('s-other-label')?.value||si.otherLabel||'기타 수입';
   // 이 정산서에 연결된 청구서 탭 id
   const invTabId=(appSettings.advInvTabs||[]).find(t=>t.settId===tid)?.id||currentAdvInvTab;
   const advCards=appSettings.cards.filter(c=>c.type==='선급금');
   const bName=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
-  // ── ① 청구금액: 청구서 탭(tabId===invTabId) 행 합계 ──
+  // ── ① 청구금액: 이 차수 청구서(bill) 행만 합계 (개별탭 정산행 제외) ──
   let billedTotal=0;
   advCards.forEach(card=>Object.values(cardData[card.id]||{}).forEach(r=>{
-    if(r.tabId===invTabId)billedTotal+=(+r.amount||0);
+    if(_isAdvBillRow(r)&&r.tabId===invTabId)billedTotal+=(+r.amount||0);
   }));
   // 선급금 수령액 입력칸: 청구서 합계 자동 반영(입력값 우선)
   const advInput=document.getElementById('s-advance');
@@ -2908,10 +2959,12 @@ function renderSettlementAdv(){
   const grp={}; // key → {code, mid, card, tran}
   const _key=(code,mid)=>`${code||0}|${mid||'기타'}`;
   const perPerson={}; // 사람(카드)별 소계
+  // 이 차수의 정산행만: 청구서 행 제외 + tabId===invTabId (마이그레이션으로 모든 행 tabId 존재)
+  const _inScope=(r)=>!_isAdvBillRow(r)&&r.tabId===invTabId;
   advCards.forEach(card=>{
     let pSum=0;
     Object.values(cardData[card.id]||{}).forEach(r=>{
-      if(r.tabId)return; // 청구서 행 제외 → 개별탭 실지출만
+      if(!_inScope(r))return; // 청구서 행/타 차수 제외 → 이 차수 정산만
       const amt=+r.amount||0;
       const k=_key(r.code,r.middle);
       if(!grp[k])grp[k]={code:+r.code||0,mid:r.middle||'기타',card:0,tran:0};
@@ -2921,6 +2974,7 @@ function renderSettlementAdv(){
   });
   let totTranOnly=0;
   Object.values(transferData||{}).forEach(r=>{
+    if(r.tabId!==invTabId)return; // 이 차수 계좌이체만 (마이그레이션으로 모든 행 tabId 존재)
     const k=_key(r.code,r.item);
     const net=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
     if(!grp[k])grp[k]={code:+r.code||0,mid:r.item||'기타',card:0,tran:0};
@@ -2939,8 +2993,8 @@ function renderSettlementAdv(){
     </tr>`;
   }).join('');
   // 사람별 소계 칩 (홍승철/김상은/계좌이체)
-  const personChips=[...Object.entries(perPerson).map(([n,v])=>`<span style="display:inline-block;background:#e8f5e9;color:#1b5e20;border-radius:14px;padding:4px 11px;font-size:11px;font-weight:600;margin:2px">👤 ${esc(n)} ${fmtNum(v)}</span>`),
-    ...(totTranOnly?[`<span style="display:inline-block;background:#e0f2f1;color:#00695c;border-radius:14px;padding:4px 11px;font-size:11px;font-weight:600;margin:2px">🏦 계좌이체 ${fmtNum(totTranOnly)}</span>`]:[])].join('');
+  const personChips=[...Object.entries(perPerson).map(([n,v])=>`<span style="display:inline-flex;align-items:center;height:26px;box-sizing:border-box;background:#e8f5e9;color:#1b5e20;border-radius:14px;padding:0 12px;font-size:11px;font-weight:600">👤 ${esc(n)} ${fmtNum(v)}</span>`),
+    ...(totTranOnly?[`<span style="display:inline-flex;align-items:center;height:26px;box-sizing:border-box;background:#e0f2f1;color:#00695c;border-radius:14px;padding:0 12px;font-size:11px;font-weight:600">🏦 계좌이체 ${fmtNum(totTranOnly)}</span>`]:[])].join('');
   const totExp=totCard+totTran;          // 정산금액(실지출)
   const totalIncome=prevBal+advance+otherAmt; // 청구금액(수령)
   const bal=totalIncome-totExp;          // 차액
@@ -2966,7 +3020,7 @@ function renderSettlementAdv(){
       </div>
     </div>
     <div style="font-size:12px;font-weight:700;color:#1b5e20;margin-bottom:6px">📋 정산 세부 내역 (개별탭 + 계좌이체)</div>
-    ${personChips?`<div style="margin-bottom:8px">${personChips}</div>`:''}
+    ${personChips?`<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px">${personChips}</div>`:''}
     <div class="tbl-wrap">
     <table class="data-table" style="min-width:560px">
       <thead><tr><th>항목</th><th>중항목</th><th>계좌이체</th><th>선급금카드</th><th>정산 소계</th></tr></thead>
@@ -3901,8 +3955,8 @@ function refreshCardTable(cid){
   const _card=appSettings.cards.find(c=>c.id===cid);
   const _isAdv=_card&&_card.type==='선급금';
   let filt=getFiltered(cid).sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
-  // 선급금 개별탭: 청구서(tabId 있는) 행 제외 → 실지출만 표시 (청구서 탭과 분리)
-  if(_isAdv)filt=filt.filter(([,r])=>!r.tabId);
+  // 선급금 개별탭: 청구서 행 제외 + 현재 차수 정산행만 표시
+  if(_isAdv)filt=filt.filter(([,r])=>!_isAdvBillRow(r)&&r.tabId===currentAdvInvTab);
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="10" class="empty-state">지출 내역이 없습니다.</td></tr>`;const te=document.getElementById(`total-${cid}`);if(te)te.textContent='0';return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const sel=(selected[cid]||new Set()).has(id);
@@ -3967,6 +4021,9 @@ function addCardRow(cid){
   const dy=Math.min(d.getDate(),new Date(yr,mn,0).getDate());
   const dateStr=`${yr}-${String(mn).padStart(2,'0')}-${String(dy).padStart(2,'0')}`;
   const row={month:tabMonth,code:budgetCodes[0]?.code||100,middle:'',minor:'',date:dateStr,detail:'',amount:0,proof:'',vendor:''};
+  // 선급금 개별탭 정산행: 현재 차수(tabId)에 귀속 (bill:false → 정산금액 집계, 해당 차수에만 표시)
+  const _addCard=appSettings.cards.find(c=>c.id===cid);
+  if(_addCard&&_addCard.type==='선급금'){row.tabId=currentAdvInvTab||_firstAdvInvTabId();row.bill=false;}
   if(!cardData[cid])cardData[cid]={};
   const _afterAdd=()=>{
     // 📊 정산서 패널이 열려 있으면 해당 카드 탭으로 자동 이동 (편집 가능한 행 바로 보임)
@@ -4004,7 +4061,9 @@ document.getElementById('card-modal')?.addEventListener('click',e=>{if(e.target=
 // ════════════════════════════════════════════
 function refreshTransferTable(){
   const tbody=document.getElementById('body-transfer');if(!tbody)return;
-  const filt=getFiltered('transfer').sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
+  // 현재 차수(tabId)의 계좌이체만 표시 (마이그레이션으로 모든 행에 tabId 존재)
+  let filt=getFiltered('transfer').sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
+  filt=filt.filter(([,r])=>r.tabId===currentAdvInvTab);
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">계좌이체 내역이 없습니다.</td></tr>`;updateTransferTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const net=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
@@ -4031,15 +4090,17 @@ function refreshTransferTable(){
   initColResize('body-transfer');autoFitCols('body-transfer');
 }
 function updateTransferTotals(){
-  // ★ 화면에 표시된(필터 적용) 행만 합산
-  const all=getFiltered('transfer').map(([,r])=>r);
+  // ★ 현재 차수(tabId)의 계좌이체만 합산 (표시 행과 동일)
+  const all=getFiltered('transfer').map(([,r])=>r).filter(r=>r.tabId===currentAdvInvTab);
   const s={sup:0,vat:0,tax:0,ins:0,net:0};
   all.forEach(r=>{s.sup+=(+r.supply||0);s.vat+=(+r.vat||0);s.tax+=(+r.tax||0);s.ins+=(+r.insurance||0);s.net+=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);});
   setText('tr-sup',fmtNum(s.sup));setText('tr-vat',fmtNum(s.vat));setText('tr-tax',fmtNum(s.tax));setText('tr-ins',fmtNum(s.ins));setText('tr-net',fmtNum(s.net));
 }
 function addTransferRow(){
   const d=new Date();
-  const row={month:d.getMonth()+1,code:budgetCodes[0]?.code||100,item:'',detail:'',vendor:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,supply:0,vat:0,tax:0,insurance:0,proof:'세금계산서',notes:''};
+  // 계좌이체도 현재 차수(tabId)에 귀속 → 해당 차수에만 반영 (미선택 시 첫 차수)
+  const _tt=currentAdvInvTab||_firstAdvInvTabId();
+  const row={tabId:_tt,month:d.getMonth()+1,code:budgetCodes[0]?.code||100,item:'',detail:'',vendor:'',date:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,supply:0,vat:0,tax:0,insurance:0,proof:'세금계산서',notes:''};
   if(isFirebase)window.__fbi.push(window.__fbi.ref(`${DB}/transfer`),row);
   else{const id='t'+Date.now();transferData[id]=row;refreshTransferTable();renderFinal();}
 }
