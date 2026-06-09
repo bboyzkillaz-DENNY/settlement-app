@@ -836,6 +836,26 @@ function loadLocalSettings(){
   try{const s=localStorage.getItem('integrated_settings');if(s){mergeSettings(JSON.parse(s));}}catch(e){}
   try{const b=localStorage.getItem('integrated_budget');if(b){budgetCodes=JSON.parse(b);}}catch(e){}
   try{const p=localStorage.getItem('integrated_proj');if(p){Object.assign(projectInfo,JSON.parse(p));}}catch(e){}
+  // 거래 데이터 localStorage 복원 (비-Firebase 모드 영속성)
+  try{const c=localStorage.getItem('integrated_cards');if(c){cardData=JSON.parse(c)||{};}}catch(e){}
+  try{const pd=localStorage.getItem('integrated_persons');if(pd){personData=JSON.parse(pd)||{};}}catch(e){}
+  try{const bd=localStorage.getItem('integrated_biz');if(bd){bizData=JSON.parse(bd)||{};}}catch(e){}
+  try{const td=localStorage.getItem('integrated_transfer');if(td){transferData=JSON.parse(td)||{};}}catch(e){}
+  try{const ad=localStorage.getItem('integrated_actors');if(ad){actorData=JSON.parse(ad)||{};}}catch(e){}
+}
+// 거래 데이터 localStorage 저장 (3초 debounce) — Firebase 미연결 시에도 유실 방지
+let _cardsPersistTimer=null;
+function persistCardsLocal(){
+  clearTimeout(_cardsPersistTimer);
+  _cardsPersistTimer=setTimeout(()=>{
+    try{
+      localStorage.setItem('integrated_cards',JSON.stringify(cardData));
+      localStorage.setItem('integrated_persons',JSON.stringify(personData));
+      localStorage.setItem('integrated_biz',JSON.stringify(bizData));
+      localStorage.setItem('integrated_transfer',JSON.stringify(transferData));
+      localStorage.setItem('integrated_actors',JSON.stringify(actorData));
+    }catch(e){console.warn('거래 데이터 로컬 저장 실패:',e);}
+  },3000);
 }
 function mergeSettings(d){
   // ── 배열 필드: Firebase가 객체로 변환한 것을 _toArr로 배열 복원 ──
@@ -1489,7 +1509,7 @@ function updA(id,field,val){
   if(!actorData[id])actorData[id]={};
   actorData[id][field]=val;
   renderActorTable();renderFinal();
-  saveTimer[`a_${id}`]=setTimeout(()=>dbUpdate(`actors/${id}`,{[field]:val}),500);
+  saveTimer[`a_${id}`]=setTimeout(()=>dbUpdate(`actors/${id}`,{[field]:val}),500);persistCardsLocal();
 }
 function delActor(id){
   if(!confirm('삭제하시겠습니까?'))return;
@@ -1835,7 +1855,7 @@ function updP(id,field,val){
   if(!personData[id])personData[id]={};
   personData[id][field]=val;
   renderPersonTable();renderFinal();
-  saveTimer[`p_${id}`]=setTimeout(()=>dbUpdate(`persons/${id}`,{[field]:val}),500);
+  saveTimer[`p_${id}`]=setTimeout(()=>dbUpdate(`persons/${id}`,{[field]:val}),500);persistCardsLocal();
 }
 function delPerson(id){
   if(!confirm('삭제하시겠습니까?'))return;
@@ -1902,7 +1922,7 @@ function updB(id,field,val){
     saveTimer[`b_${id}_vat`]=setTimeout(()=>dbUpdate(`businesses/${id}`,{vat:bizData[id].vat}),500);
   }
   renderBizTable();renderFinal();
-  saveTimer[`b_${id}`]=setTimeout(()=>dbUpdate(`businesses/${id}`,{[field]:val}),500);
+  saveTimer[`b_${id}`]=setTimeout(()=>dbUpdate(`businesses/${id}`,{[field]:val}),500);persistCardsLocal();
 }
 function delBiz(id){
   if(!confirm('삭제하시겠습니까?'))return;
@@ -2262,7 +2282,8 @@ function saveAdvInvRow(cid,rid,field,val){
   if(!cardData[cid][rid])cardData[cid][rid]={};
   cardData[cid][rid][field]=(field==='amount'?(+val||0):val);
   clearTimeout(saveTimer[`adv_${cid}_${rid}`]);
-  saveTimer[`adv_${cid}_${rid}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${rid}`,{[field]:cardData[cid][rid][field]}),450);
+  saveTimer[`adv_${cid}_${rid}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${rid}`,{[field]:cardData[cid][rid][field]}),3000);
+  persistCardsLocal(); // localStorage 3초 백업
   // 합계 즉시 업데이트
   const advCards=appSettings.cards.filter(c=>c.type==='선급금');
   const tabId=currentAdvInvTab;
@@ -2278,7 +2299,8 @@ function saveAdvInvRow(cid,rid,field,val){
 }
 function addAdvInvRow(){
   const _allAdv=appSettings.cards.filter(c=>c.type==='선급금');
-  const _tabIds=_toArr(currentAdvInvCfg?.cardIds||null).filter(Boolean);
+  // ★ renderAdvInvoice와 동일한 카드 목록 사용 (currentAdvInvCardIds 우선) → 새 행이 항상 표시됨
+  const _tabIds=currentAdvInvCardIds.length?currentAdvInvCardIds:_toArr(currentAdvInvCfg?.cardIds||null).filter(Boolean);
   const advCards=_tabIds.length?_allAdv.filter(c=>_tabIds.includes(c.id)):_allAdv;
   if(!advCards.length){showToast('설정 탭에서 선급금 사용자를 먼저 추가해주세요.');return;}
   const card=advCards[0];
@@ -2292,6 +2314,7 @@ function addAdvInvRow(){
     const id='r'+Date.now();
     cardData[card.id][id]=row;renderAdvInvoice();renderFinal();
   }
+  persistCardsLocal(); // localStorage 3초 백업
   setTimeout(()=>{const rows=document.querySelectorAll('#cpanel-adv-invoice tbody tr');const last=rows[rows.length-1];if(last)last.querySelector('input')?.focus();},50);
 }
 function deleteAdvInvRow(cid,rid){
@@ -2513,19 +2536,23 @@ function renderCorpInvoice(){
   if(!corpCards.length){
     sectionsHtml=`<div style="padding:30px;text-align:center;color:#aaa;font-size:13px">법인카드 사용자가 없습니다.<br>설정 탭에서 법인카드 사용자를 추가해 주세요.</div>`;
   } else {
+    const bName=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
     corpCards.forEach((card,idx)=>{
       const color=colors[idx%colors.length];
-      const minorMap={};
+      // (예산코드|중항목|소항목) 3단계 그룹핑
+      const triMap={};
       let subTotal=0;
       const allRows=Object.entries(cardData[card.id]||{});
       const filtRows=allRows.filter(([,r])=>!mFilter||+r.month===mFilter);
       filtRows.forEach(([,r])=>{
-        const key=r.minor||'(소항목 없음)';
-        minorMap[key]=(minorMap[key]||0)+(+r.amount||0);
+        const code=+r.code||0,mid=r.middle||'',min=r.minor||'';
+        const k=code+''+mid+''+min;
+        if(!triMap[k])triMap[k]={code,mid,min,amt:0};
+        triMap[k].amt+=(+r.amount||0);
         subTotal+=(+r.amount||0);
       });
       grandTotal+=subTotal;
-      const keys=Object.keys(minorMap);
+      const tri=Object.values(triMap).sort((a,b)=>(a.code-b.code)||a.mid.localeCompare(b.mid,'ko')||a.min.localeCompare(b.min,'ko'));
       sectionsHtml+=`
       <div style="margin-bottom:18px;border:1.5px solid #e8eaf6;border-radius:12px;overflow:hidden">
         <div style="background:${color};color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -2538,20 +2565,24 @@ function renderCorpInvoice(){
             <button class="btn btn-add btn-sm" style="background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);color:#fff;padding:3px 10px;font-size:12px" onclick="addCardRow('${card.id}')">+ 추가</button>
           </div>
         </div>
-        ${keys.length?`
+        ${tri.length?`
         <table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:#f5f6fa;font-size:12px;color:#666">
+            <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">항목</th>
+            <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">중항목</th>
             <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">소항목</th>
             <th style="padding:8px 14px;text-align:right;font-weight:600;border-bottom:1px solid #e8eaf6">합계금액</th>
           </tr></thead>
           <tbody>
-            ${keys.map(k=>`<tr style="border-bottom:1px solid #f0f0f0">
-              <td style="padding:9px 14px;font-size:13px">${esc(k)}</td>
-              <td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:600">${n0(minorMap[k])} 원</td>
+            ${tri.map(t=>`<tr style="border-bottom:1px solid #f0f0f0">
+              <td style="padding:9px 14px;font-size:12px;color:#1a237e;font-weight:600">${esc(bName(t.code))}</td>
+              <td style="padding:9px 14px;font-size:13px">${esc(t.mid||'-')}</td>
+              <td style="padding:9px 14px;font-size:13px">${esc(t.min||'-')}</td>
+              <td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:600">${n0(t.amt)} 원</td>
             </tr>`).join('')}
           </tbody>
           <tfoot><tr style="background:#f8f9ff">
-            <td style="padding:9px 14px;font-weight:700;font-size:13px;color:${color}">소 계</td>
+            <td colspan="3" style="padding:9px 14px;font-weight:700;font-size:13px;color:${color}">소 계</td>
             <td style="padding:9px 14px;text-align:right;font-weight:700;font-size:14px;color:${color}">${n0(subTotal)} 원</td>
           </tr></tfoot>
         </table>`:`
@@ -2716,13 +2747,13 @@ function buildTransferPanel(){
         <table class="data-table" style="min-width:1400px">
           <thead><tr>
             <th class="cbc"><input type="checkbox" id="chk-transfer" onchange="toggleAll('transfer',this.checked)"></th>
-            <th>월</th><th>예산코드</th><th>항목</th><th>세부항목</th><th>거래처</th><th>날짜</th>
+            <th>날짜</th><th>항목</th><th>중항목</th><th>세부항목</th><th>지출처</th>
             <th>공급가액</th><th>부가세</th><th>원천세</th><th>고용보험</th><th>실지급액<span class="auto-badge">자동</span></th>
-            <th>증빙</th><th>비고</th><th>삭제</th>
+            <th>증빙</th><th>세부내역</th><th>삭제</th>
           </tr></thead>
           <tbody id="body-transfer"></tbody>
           <tfoot><tr class="total-r">
-            <td></td><td colspan="6" style="text-align:center">총 계</td>
+            <td></td><td colspan="5" style="text-align:center">총 계</td>
             <td class="ac" id="tr-sup">0</td><td class="ac" id="tr-vat">0</td><td class="ac" id="tr-tax">0</td><td class="ac" id="tr-ins">0</td><td class="ac" id="tr-net">0</td>
             <td colspan="3"></td>
           </tr></tfoot>
@@ -2755,11 +2786,11 @@ function buildCardPanel(card,active){
         <table class="data-table" style="min-width:1100px">
           <thead><tr>
             <th class="cbc"><input type="checkbox" id="chk-${cid}" onchange="toggleAll('${cid}',this.checked)"></th>
-            <th>월</th><th>예산코드</th><th>중항목</th><th>소항목</th><th>날짜</th><th>세부내역</th>
-            <th>금액</th><th>증빙</th><th>지출처</th><th>삭제</th>
+            <th>날짜</th><th>항목</th><th>중항목</th><th>소항목</th><th>지출처</th>
+            <th>금액</th><th>증빙</th><th>세부내역</th><th>삭제</th>
           </tr></thead>
           <tbody id="body-${cid}"></tbody>
-          <tfoot><tr class="total-r"><td></td><td colspan="6" style="text-align:center">총 계</td><td class="ac" id="total-${cid}">0</td><td colspan="3"></td></tr></tfoot>
+          <tfoot><tr class="total-r"><td></td><td colspan="5" style="text-align:center">총 계</td><td class="ac" id="total-${cid}">0</td><td colspan="3"></td></tr></tfoot>
         </table>
       </div>
     </div>
@@ -2857,50 +2888,91 @@ function renderSettlementAdv(){
   const tid=currentAdvSettTab||'advsett1';
   const si=(appSettings.advSettlements||{})[tid]||appSettings.settlementInfo||{};
   const prevBal=parseI(document.getElementById('s-prev-bal')?.value??si.prevBalance??0);
-  const advance=parseI(document.getElementById('s-advance')?.value??si.advance??0);
   const otherAmt=parseI(document.getElementById('s-other')?.value??si.otherAmt??0);
   const otherLabel=document.getElementById('s-other-label')?.value||si.otherLabel||'기타 수입';
-  // 현재 정산서에 연결된 청구서 탭의 tabId로 필터
+  // 이 정산서에 연결된 청구서 탭 id
   const invTabId=(appSettings.advInvTabs||[]).find(t=>t.settId===tid)?.id||currentAdvInvTab;
-  const totalIncome=prevBal+advance+otherAmt;
-  // 선급금 카드만 합산 (tabId 필터)
-  const advCardByMid={};
-  appSettings.cards.filter(c=>c.type==='선급금').forEach(card=>{
+  const advCards=appSettings.cards.filter(c=>c.type==='선급금');
+  const bName=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
+  // ── ① 청구금액: 청구서 탭(tabId===invTabId) 행 합계 ──
+  let billedTotal=0;
+  advCards.forEach(card=>Object.values(cardData[card.id]||{}).forEach(r=>{
+    if(r.tabId===invTabId)billedTotal+=(+r.amount||0);
+  }));
+  // 선급금 수령액 입력칸: 청구서 합계 자동 반영(입력값 우선)
+  const advInput=document.getElementById('s-advance');
+  const advance=billedTotal||parseI(advInput?.value??si.advance??0);
+  if(advInput&&billedTotal){advInput.value=fmtI(billedTotal);}
+  // ── ② 정산금액(실지출): 개별탭(tabId 없는 선급금카드) + 계좌이체 ──
+  // (코드|중항목) 키로 그룹핑하여 항목·중항목 분리 표시
+  const grp={}; // key → {code, mid, card, tran}
+  const _key=(code,mid)=>`${code||0}|${mid||'기타'}`;
+  const perPerson={}; // 사람(카드)별 소계
+  advCards.forEach(card=>{
+    let pSum=0;
     Object.values(cardData[card.id]||{}).forEach(r=>{
-      if(r.tabId&&r.tabId!==invTabId)return;
-      const k=r.middle||'기타';advCardByMid[k]=(advCardByMid[k]||0)+(+r.amount||0);
+      if(r.tabId)return; // 청구서 행 제외 → 개별탭 실지출만
+      const amt=+r.amount||0;
+      const k=_key(r.code,r.middle);
+      if(!grp[k])grp[k]={code:+r.code||0,mid:r.middle||'기타',card:0,tran:0};
+      grp[k].card+=amt;pSum+=amt;
     });
+    if(pSum)perPerson[card.tabLabel||card.person||card.id]=pSum;
   });
-  // 계좌이체 합산 (전체 표시)
-  const tranByItem={};
+  let totTranOnly=0;
   Object.values(transferData||{}).forEach(r=>{
-    const k=r.item||'기타';tranByItem[k]=(tranByItem[k]||0)+calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
+    const k=_key(r.code,r.item);
+    const net=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
+    if(!grp[k])grp[k]={code:+r.code||0,mid:r.item||'기타',card:0,tran:0};
+    grp[k].tran+=net;totTranOnly+=net;
   });
-  const allKeys=[...new Set([...Object.keys(advCardByMid),...Object.keys(tranByItem)])].sort();
+  const groups=Object.values(grp).sort((a,b)=>(a.code-b.code)||a.mid.localeCompare(b.mid,'ko'));
   let totCard=0,totTran=0;
-  const rows=allKeys.map((k,i)=>{
-    const c=advCardByMid[k]||0,t=tranByItem[k]||0;
-    totCard+=c;totTran+=t;
+  const rows=groups.map((g,i)=>{
+    totCard+=g.card;totTran+=g.tran;
     return `<tr style="background:${i%2===0?'#fff':'#fafafa'}">
-      <td style="padding:7px 10px">${esc(k)}</td>
-      <td class="ac" style="padding:7px 10px">${t?fmtNum(t):'-'}</td>
-      <td class="ac" style="padding:7px 10px">${c?fmtNum(c):'-'}</td>
-      <td class="ac" style="padding:7px 10px;font-weight:600;color:#1a237e">${fmtNum(t+c)}</td>
+      <td style="padding:7px 10px;font-weight:600;color:#1b5e20">${esc(bName(g.code))}</td>
+      <td style="padding:7px 10px">${esc(g.mid)}</td>
+      <td class="ac" style="padding:7px 10px">${g.tran?fmtNum(g.tran):'-'}</td>
+      <td class="ac" style="padding:7px 10px">${g.card?fmtNum(g.card):'-'}</td>
+      <td class="ac" style="padding:7px 10px;font-weight:600;color:#1a237e">${fmtNum(g.tran+g.card)}</td>
     </tr>`;
   }).join('');
-  const totExp=totCard+totTran;
-  const bal=totalIncome-totExp;
+  // 사람별 소계 칩 (홍승철/김상은/계좌이체)
+  const personChips=[...Object.entries(perPerson).map(([n,v])=>`<span style="display:inline-block;background:#e8f5e9;color:#1b5e20;border-radius:14px;padding:4px 11px;font-size:11px;font-weight:600;margin:2px">👤 ${esc(n)} ${fmtNum(v)}</span>`),
+    ...(totTranOnly?[`<span style="display:inline-block;background:#e0f2f1;color:#00695c;border-radius:14px;padding:4px 11px;font-size:11px;font-weight:600;margin:2px">🏦 계좌이체 ${fmtNum(totTranOnly)}</span>`]:[])].join('');
+  const totExp=totCard+totTran;          // 정산금액(실지출)
+  const totalIncome=prevBal+advance+otherAmt; // 청구금액(수령)
+  const bal=totalIncome-totExp;          // 차액
   const balColor=bal>=0?'#2e7d32':'#c62828';
+  const balLabel=bal>=0?'잔액 (반납/이월)':'초과 지출 (추가청구)';
   el.innerHTML=`
-    <div style="margin-bottom:8px;font-size:11px;color:#888;font-weight:600">수입: ${fmtNum(prevBal)} (전월잔액) + ${fmtNum(advance)} (선급금) + ${fmtNum(otherAmt)} (${esc(otherLabel)}) = <strong style="color:#1a237e">${fmtNum(totalIncome)}</strong></div>
+    <!-- 청구금액 / 정산금액 / 차액 요약 -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:#e8eaf6;border-radius:10px;padding:12px 14px;border-left:4px solid #3949ab">
+        <div style="font-size:11px;color:#666;font-weight:600">청구금액 (수령)</div>
+        <div style="font-size:17px;font-weight:800;color:#1a237e;margin-top:3px">${fmtNum(totalIncome)}</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">전월 ${fmtNum(prevBal)} + 청구서 ${fmtNum(advance)} + ${esc(otherLabel)} ${fmtNum(otherAmt)}</div>
+      </div>
+      <div style="background:#fff3e0;border-radius:10px;padding:12px 14px;border-left:4px solid #e65100">
+        <div style="font-size:11px;color:#666;font-weight:600">정산금액 (실지출)</div>
+        <div style="font-size:17px;font-weight:800;color:#e65100;margin-top:3px">${fmtNum(totExp)}</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">선급금카드 ${fmtNum(totCard)} + 계좌이체 ${fmtNum(totTran)}</div>
+      </div>
+      <div style="background:${bal>=0?'#e8f5e9':'#ffebee'};border-radius:10px;padding:12px 14px;border-left:4px solid ${balColor}">
+        <div style="font-size:11px;color:#666;font-weight:600">${balLabel}</div>
+        <div style="font-size:17px;font-weight:800;color:${balColor};margin-top:3px">${fmtNum(Math.abs(bal))}</div>
+        <div style="font-size:10px;color:#999;margin-top:2px">청구 − 정산 = ${fmtNum(bal)}</div>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#1b5e20;margin-bottom:6px">📋 정산 세부 내역 (개별탭 + 계좌이체)</div>
+    ${personChips?`<div style="margin-bottom:8px">${personChips}</div>`:''}
     <div class="tbl-wrap">
-    <table class="data-table" style="min-width:500px">
-      <thead><tr><th>항목 (중항목)</th><th>계좌이체</th><th>선급금카드</th><th>소계</th></tr></thead>
-      <tbody>${rows||'<tr><td colspan="4" class="empty-state">선급금 거래 내역이 없습니다.</td></tr>'}</tbody>
+    <table class="data-table" style="min-width:560px">
+      <thead><tr><th>항목</th><th>중항목</th><th>계좌이체</th><th>선급금카드</th><th>정산 소계</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="5" class="empty-state">정산(실지출) 내역이 없습니다. 홍승철·김상은 개별탭 또는 계좌이체에 입력하세요.</td></tr>'}</tbody>
       <tfoot>
-        <tr class="total-r"><td>지출 합계</td><td class="ac">${fmtNum(totTran)}</td><td class="ac">${fmtNum(totCard)}</td><td class="ac">${fmtNum(totExp)}</td></tr>
-        <tr style="background:#e8f5e9"><td colspan="3" style="font-weight:700;padding:9px 10px;color:#2e7d32">계좌 잔액 (수입 - 지출)</td>
-          <td class="ac" style="font-size:15px;font-weight:700;color:${balColor};padding:9px 10px">${fmtNum(bal)}</td></tr>
+        <tr class="total-r"><td colspan="2">정산금액 합계</td><td class="ac">${fmtNum(totTran)}</td><td class="ac">${fmtNum(totCard)}</td><td class="ac">${fmtNum(totExp)}</td></tr>
       </tfoot>
     </table></div>`;
 }
@@ -2915,31 +2987,32 @@ function renderSettlementCorp(){
   const mFilter=+(currentCorpSettCfg?.month||0);
   const n0=v=>(v||0).toLocaleString('ko-KR');
   const corpCards=appSettings.cards.filter(c=>(c.type||'법인카드')==='법인카드');
-  // 카드(사람)별 소항목 집계
+  const bName=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
+  // 카드(사람)별 항목·중항목·소항목 3단계 집계
   const cardSections=[];
   let grandTotal=0;
   corpCards.forEach(card=>{
-    const minorMap={};
+    const triMap={};
     Object.values(cardData[card.id]||{}).forEach(r=>{
       if(mFilter&&+r.month!==mFilter)return;
-      const key=r.minor||'(소항목 없음)';
-      if(!minorMap[key])minorMap[key]=0;
-      minorMap[key]+=+r.amount||0;
+      const code=+r.code||0,mid=r.middle||'',min=r.minor||'';
+      const k=code+''+mid+''+min;
+      if(!triMap[k])triMap[k]={code,mid,min,amt:0};
+      triMap[k].amt+=+r.amount||0;
     });
-    const keys=Object.keys(minorMap);
-    if(!keys.length)return;
-    const subTotal=keys.reduce((a,k)=>a+minorMap[k],0);
+    const tri=Object.values(triMap).sort((a,b)=>(a.code-b.code)||a.mid.localeCompare(b.mid,'ko')||a.min.localeCompare(b.min,'ko'));
+    if(!tri.length)return;
+    const subTotal=tri.reduce((a,t)=>a+t.amt,0);
     grandTotal+=subTotal;
-    cardSections.push({card,minorMap,keys,subTotal});
+    cardSections.push({card,tri,subTotal});
   });
   const colors=['#1a237e','#1b5e20','#4a148c','#b71c1c','#e65100','#006064'];
   let sectionsHtml='';
   if(!cardSections.length){
     sectionsHtml=`<div style="padding:30px;text-align:center;color:#aaa;font-size:13px">법인카드 지출 내역이 없습니다.</div>`;
   } else {
-    cardSections.forEach(({card,minorMap,keys,subTotal},idx)=>{
+    cardSections.forEach(({card,tri,subTotal},idx)=>{
       const color=colors[idx%colors.length];
-      const pct=grandTotal?Math.round(subTotal/grandTotal*100):0;
       sectionsHtml+=`
       <div style="margin-bottom:18px;border:1.5px solid #e8eaf6;border-radius:12px;overflow:hidden">
         <div style="background:${color};color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between">
@@ -2948,17 +3021,21 @@ function renderSettlementCorp(){
         </div>
         <table style="width:100%;border-collapse:collapse">
           <thead><tr style="background:#f5f6fa;font-size:12px;color:#666">
+            <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">항목</th>
+            <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">중항목</th>
             <th style="padding:8px 14px;text-align:left;font-weight:600;border-bottom:1px solid #e8eaf6">소항목</th>
             <th style="padding:8px 14px;text-align:right;font-weight:600;border-bottom:1px solid #e8eaf6">합계금액</th>
           </tr></thead>
           <tbody>
-            ${keys.map(k=>`<tr style="border-bottom:1px solid #f0f0f0">
-              <td style="padding:9px 14px;font-size:13px">${esc(k)}</td>
-              <td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:600">${n0(minorMap[k])} 원</td>
+            ${tri.map(t=>`<tr style="border-bottom:1px solid #f0f0f0">
+              <td style="padding:9px 14px;font-size:12px;color:#1a237e;font-weight:600">${esc(bName(t.code))}</td>
+              <td style="padding:9px 14px;font-size:13px">${esc(t.mid||'-')}</td>
+              <td style="padding:9px 14px;font-size:13px">${esc(t.min||'-')}</td>
+              <td style="padding:9px 14px;text-align:right;font-size:13px;font-weight:600">${n0(t.amt)} 원</td>
             </tr>`).join('')}
           </tbody>
           <tfoot><tr style="background:#f8f9ff">
-            <td style="padding:9px 14px;font-weight:700;font-size:13px;color:${color}">소 계</td>
+            <td colspan="3" style="padding:9px 14px;font-weight:700;font-size:13px;color:${color}">소 계</td>
             <td style="padding:9px 14px;text-align:right;font-weight:700;font-size:14px;color:${color}">${n0(subTotal)} 원</td>
           </tr></tfoot>
         </table>
@@ -3821,21 +3898,25 @@ function switchCardTab(cid){
 }
 function refreshCardTable(cid){
   const tbody=document.getElementById(`body-${cid}`);if(!tbody)return;
-  const filt=getFiltered(cid).sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
-  if(!filt.length){tbody.innerHTML=`<tr><td colspan="11" class="empty-state">지출 내역이 없습니다.</td></tr>`;const te=document.getElementById(`total-${cid}`);if(te)te.textContent='0';return;}
+  const _card=appSettings.cards.find(c=>c.id===cid);
+  const _isAdv=_card&&_card.type==='선급금';
+  let filt=getFiltered(cid).sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
+  // 선급금 개별탭: 청구서(tabId 있는) 행 제외 → 실지출만 표시 (청구서 탭과 분리)
+  if(_isAdv)filt=filt.filter(([,r])=>!r.tabId);
+  if(!filt.length){tbody.innerHTML=`<tr><td colspan="10" class="empty-state">지출 내역이 없습니다.</td></tr>`;const te=document.getElementById(`total-${cid}`);if(te)te.textContent='0';return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const sel=(selected[cid]||new Set()).has(id);
+    // 순서: 날짜 → 항목(예산코드) → 중항목 → 소항목 → 지출처 → 금액 → 증빙 → 세부내역
     return `<tr id="rc-${cid}-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('${cid}','${id}',this.checked)"></td>
-      <td><select onchange="updC('${cid}','${id}','month',+this.value)">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
+      <td><input type="date" value="${r.date||''}" onchange="updCDate('${cid}','${id}',this.value)" style="min-width:120px"></td>
       <td><select onchange="updC('${cid}','${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:110px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
       <td><input value="${esc(r.middle)}" onchange="updC('${cid}','${id}','middle',this.value)" style="min-width:80px"></td>
       <td><input value="${esc(r.minor)}" onchange="updC('${cid}','${id}','minor',this.value)" style="min-width:60px"></td>
-      <td><input type="date" value="${r.date||''}" onchange="updC('${cid}','${id}','date',this.value)" style="min-width:110px"></td>
-      <td><input value="${esc(r.detail)}" onchange="updC('${cid}','${id}','detail',this.value)" style="min-width:120px"></td>
+      <td><input value="${esc(r.vendor)}" onchange="updC('${cid}','${id}','vendor',this.value)" style="min-width:90px"></td>
       <td class="ac"><input type="text" class="num-input" value="${(+r.amount)?fmtI(r.amount):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updC('${cid}','${id}','amount',parseI(this.value))" style="text-align:right;min-width:100px"></td>
       <td><input value="${esc(r.proof)}" onchange="updC('${cid}','${id}','proof',this.value)" style="min-width:75px"></td>
-      <td><input value="${esc(r.vendor)}" onchange="updC('${cid}','${id}','vendor',this.value)" style="min-width:90px"></td>
+      <td><input value="${esc(r.detail)}" onchange="updC('${cid}','${id}','detail',this.value)" style="min-width:120px"></td>
       <td><button class="btn btn-danger btn-sm" onclick="delCard('${cid}','${id}')">✕</button></td>
     </tr>`;
   }).join('');
@@ -3845,13 +3926,30 @@ function refreshCardTable(cid){
   buildFilterOpts(cid); updateSelToolbar(cid);
   initColResize(`body-${cid}`);autoFitCols(`body-${cid}`);
 }
+// 날짜 변경 시 월(month) 자동 추출 → 월별 필터/캐시플로우 정상 반영
+function updCDate(cid,id,val){
+  if(!cardData[cid])cardData[cid]={};
+  if(!cardData[cid][id])cardData[cid][id]={};
+  cardData[cid][id].date=val;
+  const mm=val&&/^\d{4}-(\d{2})/.test(val)?+val.slice(5,7):0;
+  if(mm>=1&&mm<=12)cardData[cid][id].month=mm;
+  refreshCardTable(cid);renderFinal();
+  const _sp=document.getElementById('cpanel-adv-settlement');
+  if(_sp&&_sp.style.display!=='none')renderSettlementAdv();
+  clearTimeout(saveTimer[`c_${cid}_${id}`]);
+  saveTimer[`c_${cid}_${id}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${id}`,{date:val,month:cardData[cid][id].month}),3000);
+  persistCardsLocal();
+}
 function updC(cid,id,field,val){
   clearTimeout(saveTimer[`c_${cid}_${id}`]);
   if(!cardData[cid])cardData[cid]={};
   if(!cardData[cid][id])cardData[cid][id]={};
   cardData[cid][id][field]=val;
   refreshCardTable(cid);renderFinal();
-  saveTimer[`c_${cid}_${id}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${id}`,{[field]:val}),500);
+  // 선급금 정산서 패널이 열려 있으면 즉시 반영
+  const _sp=document.getElementById('cpanel-adv-settlement');
+  if(_sp&&_sp.style.display!=='none')renderSettlementAdv();
+  saveTimer[`c_${cid}_${id}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${id}`,{[field]:val}),3000);persistCardsLocal();
 }
 function delCard(cid,id){
   if(!confirm('삭제하시겠습니까?'))return;
@@ -3906,19 +4004,19 @@ document.getElementById('card-modal')?.addEventListener('click',e=>{if(e.target=
 // ════════════════════════════════════════════
 function refreshTransferTable(){
   const tbody=document.getElementById('body-transfer');if(!tbody)return;
-  const filt=getFiltered('transfer');
-  if(!filt.length){tbody.innerHTML=`<tr><td colspan="15" class="empty-state">계좌이체 내역이 없습니다.</td></tr>`;updateTransferTotals();return;}
+  const filt=getFiltered('transfer').sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
+  if(!filt.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">계좌이체 내역이 없습니다.</td></tr>`;updateTransferTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const net=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
     const sel=(selected.transfer||new Set()).has(id);
+    // 순서: 날짜 → 항목(예산코드) → 중항목 → 세부항목 → 지출처 → 공급가액 → 부가세 → 원천세 → 고용보험 → 실지급액 → 증빙 → 세부내역
     return `<tr id="rt-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('transfer','${id}',this.checked)"></td>
-      <td><select onchange="updT('${id}','month',+this.value)">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
+      <td><input type="date" value="${r.date||''}" onchange="updTDate('${id}',this.value)" style="min-width:120px"></td>
       <td><select onchange="updT('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:110px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
       <td><input value="${esc(r.item)}" onchange="updT('${id}','item',this.value)" style="min-width:80px"></td>
       <td><input value="${esc(r.detail)}" onchange="updT('${id}','detail',this.value)" style="min-width:100px"></td>
       <td><input value="${esc(r.vendor)}" onchange="updT('${id}','vendor',this.value)" style="min-width:90px"></td>
-      <td><input type="date" value="${r.date||''}" onchange="updT('${id}','date',this.value)" style="min-width:110px"></td>
       <td class="ac"><input type="text" class="num-input" value="${(+r.supply)?fmtI(r.supply):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','supply',parseI(this.value))" style="text-align:right;min-width:100px"></td>
       <td class="ac"><input type="text" class="num-input" value="${(+r.vat)?fmtI(r.vat):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','vat',parseI(this.value))" style="text-align:right;min-width:85px"></td>
       <td class="ac"><input type="text" class="num-input" value="${(+r.tax)?fmtI(r.tax):''}" placeholder="0" onfocus="this.value=parseI(this.value)||''" onblur="if(this.value)this.value=fmtI(this.value)" onchange="updT('${id}','tax',parseI(this.value))" style="text-align:right;min-width:85px"></td>
@@ -3950,7 +4048,23 @@ function updT(id,field,val){
   if(!transferData[id])transferData[id]={};
   transferData[id][field]=val;
   refreshTransferTable();renderFinal();
-  saveTimer[`t_${id}`]=setTimeout(()=>dbUpdate(`transfer/${id}`,{[field]:val}),500);
+  // 선급금 정산서 패널이 열려 있으면 즉시 반영
+  const _sp=document.getElementById('cpanel-adv-settlement');
+  if(_sp&&_sp.style.display!=='none')renderSettlementAdv();
+  saveTimer[`t_${id}`]=setTimeout(()=>dbUpdate(`transfer/${id}`,{[field]:val}),500);persistCardsLocal();
+}
+// 계좌이체 날짜 변경 시 월(month) 자동 추출
+function updTDate(id,val){
+  if(!transferData[id])transferData[id]={};
+  transferData[id].date=val;
+  const mm=val&&/^\d{4}-(\d{2})/.test(val)?+val.slice(5,7):0;
+  if(mm>=1&&mm<=12)transferData[id].month=mm;
+  refreshTransferTable();renderFinal();
+  const _sp=document.getElementById('cpanel-adv-settlement');
+  if(_sp&&_sp.style.display!=='none')renderSettlementAdv();
+  clearTimeout(saveTimer[`t_${id}`]);
+  saveTimer[`t_${id}`]=setTimeout(()=>dbUpdate(`transfer/${id}`,{date:val,month:transferData[id].month}),3000);
+  persistCardsLocal();
 }
 function delTransfer(id){
   if(!confirm('삭제하시겠습니까?'))return;
@@ -5171,6 +5285,52 @@ function _doStart(){
   appInit();
 }
 window.addEventListener('load', _doStart);
+
+// ════════════════════════════════════════════
+// Tab 키 → 다음 입력칸 이동 (표 재렌더로 포커스 유실돼도 복원)
+// ════════════════════════════════════════════
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Tab')return;
+  const el=e.target;
+  if(!el||(el.tagName!=='INPUT'&&el.tagName!=='SELECT'&&el.tagName!=='TEXTAREA'))return;
+  if(el.type==='checkbox'||el.type==='file')return;
+  // 같은 테이블(또는 패널) 안의 포커스 가능한 입력만 대상
+  const scope=el.closest('table')||el.closest('[data-corp-panel]')||el.closest('[data-adv-panel]')||el.closest('.card');
+  if(!scope)return;
+  const foc=[...scope.querySelectorAll('input,select,textarea')]
+    .filter(x=>x.type!=='checkbox'&&x.type!=='file'&&!x.disabled&&x.offsetParent!==null);
+  const idx=foc.indexOf(el);
+  if(idx<0)return;
+  e.preventDefault();
+  // 현재 값 커밋(change 유발 → 저장/재렌더) 후, 다음 칸으로 포커스 (재렌더 끝난 뒤 setTimeout)
+  const nextRel=e.shiftKey?-1:1;
+  // 위치 기준값: 현재 행 id + 입력 인덱스
+  const row=el.closest('tr');
+  const rowId=row?row.id:'';
+  const cellInputs=row?[...row.querySelectorAll('input,select,textarea')].filter(x=>x.type!=='checkbox'&&x.type!=='file'):[];
+  const cellIdx=cellInputs.indexOf(el);
+  el.blur(); // onchange 커밋 → 필요시 재렌더
+  setTimeout(()=>{
+    // 재렌더 후 같은 행을 id로 다시 찾아 다음 입력으로 이동
+    let targetScope=document;
+    if(rowId){const r2=document.getElementById(rowId);if(r2){
+      const rowFoc=[...r2.querySelectorAll('input,select,textarea')].filter(x=>x.type!=='checkbox'&&x.type!=='file'&&!x.disabled&&x.offsetParent!==null);
+      const here=rowFoc[cellIdx];
+      // 전체 스코프 기준 다음 입력
+      const sc=r2.closest('table')||r2.closest('[data-corp-panel]')||r2.closest('[data-adv-panel]')||r2.closest('.card')||document;
+      const all=[...sc.querySelectorAll('input,select,textarea')].filter(x=>x.type!=='checkbox'&&x.type!=='file'&&!x.disabled&&x.offsetParent!==null);
+      const anchor=here||rowFoc[0];
+      const ai=all.indexOf(anchor);
+      const nx=all[ai+nextRel];
+      if(nx){nx.focus();if(nx.select)try{nx.select();}catch(_){}}
+      return;
+    }}
+    // 행 id 없을 때(설정탭 등): 원래 위치 기준 단순 이동
+    const all=[...(el.closest('table')||el.closest('.card')||document).querySelectorAll('input,select,textarea')].filter(x=>x.type!=='checkbox'&&x.type!=='file'&&!x.disabled&&x.offsetParent!==null);
+    const nx=all[idx+nextRel];
+    if(nx){nx.focus();if(nx.select)try{nx.select();}catch(_){}}
+  },0);
+},true);
 </script>
 </body>
 </html>
