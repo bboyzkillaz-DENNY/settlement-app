@@ -3169,41 +3169,59 @@ function exportCorpInvoice(){
   const corpCards=_cfgCardIds.length?_allCorpC.filter(c=>_cfgCardIds.includes(c.id)):_allCorpC;
   const cardSections=[];let grandTotal=0;
   corpCards.forEach(card=>{
-    const minorMap={};
+    // 항목+중항목 키로 그룹핑 → 소항목별 합계
+    const groupMap={};
     Object.values(cardData[card.id]||{}).forEach(r=>{
       if(mFilter&&+r.month!==mFilter)return;
-      const key=r.minor||'(소항목 없음)';
-      minorMap[key]=(minorMap[key]||0)+(+r.amount||0);
+      const bName=budgetCodes.find(b=>b.code===+r.code);
+      const codeStr=`${r.code||''} ${bName?bName.name:''}`.trim();
+      const gKey=`${codeStr}||${r.middle||''}`;
+      if(!groupMap[gKey])groupMap[gKey]={codeStr,middle:r.middle||'',minors:{}};
+      const minor=r.minor||'(소항목 없음)';
+      groupMap[gKey].minors[minor]=(groupMap[gKey].minors[minor]||0)+(+r.amount||0);
     });
-    const keys=Object.keys(minorMap);if(!keys.length)return;
-    const subTotal=keys.reduce((a,k)=>a+minorMap[k],0);
+    if(!Object.keys(groupMap).length)return;
+    const subTotal=Object.values(groupMap).reduce((a,g)=>a+Object.values(g.minors).reduce((b,v)=>b+v,0),0);
     grandTotal+=subTotal;
-    cardSections.push({card,minorMap,keys,subTotal});
+    cardSections.push({card,groupMap,subTotal});
   });
   const ws={};const m=[];let R=0;
-  // 제목
+  // 제목 (4열)
   ws[ea(0,R)]=em2(`${proj} 법인카드 정산서 - ${tabLabel}`,sTitle);
-  for(let c=1;c<3;c++)ws[ea(c,R)]=em2('',sTitle);
-  m.push({s:{r:R,c:0},e:{r:R,c:2}});R++;
+  for(let c=1;c<4;c++)ws[ea(c,R)]=em2('',sTitle);
+  m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
   // 정보행
-  ws[ea(0,R)]=em2(`프로젝트: ${proj}`,sInfo);ws[ea(1,R)]=em2(`담당자: ${projectInfo.manager||''}`,sInfo);ws[ea(2,R)]=em2(`작성일: ${today}`,sInfo);R++;
-  // 헤더
-  ['카드 / 담당자','소항목','합계금액'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-  cardSections.forEach(({card,minorMap,keys,subTotal})=>{
-    const pct=grandTotal?Math.round(subTotal/grandTotal*100):0;
+  ws[ea(0,R)]=em2(`프로젝트: ${proj}`,sInfo);ws[ea(1,R)]=em2('',sInfo);
+  ws[ea(2,R)]=em2(`담당자: ${projectInfo.manager||''}`,sInfo);ws[ea(3,R)]=em2(`작성일: ${today}`,sInfo);R++;
+  cardSections.forEach(({card,groupMap,subTotal})=>{
+    // 카드 소유자 제목행 (4열 병합)
     ws[ea(0,R)]=em2(`💳 ${card.tabLabel}  ${card.person||''}`,sCardHdr);
-    for(let c=1;c<3;c++)ws[ea(c,R)]=em2('',sCardHdr);
-    m.push({s:{r:R,c:0},e:{r:R,c:2}});R++;
-    keys.forEach((k,ri)=>{
-      const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
-      ws[ea(0,R)]=em2('',s);ws[ea(1,R)]=em2(k,s);ws[ea(2,R)]=em2(minorMap[k],sa,true);R++;
+    for(let c=1;c<4;c++)ws[ea(c,R)]=em2('',sCardHdr);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    // 카드별 헤더: 항목, 중항목, 소항목, 합계금액
+    ['항목','중항목','소항목','합계금액'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
+    let ri=0;
+    Object.values(groupMap).forEach(({codeStr,middle,minors})=>{
+      const minorEntries=Object.entries(minors);
+      minorEntries.forEach(([minor,amt],i)=>{
+        const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
+        // 같은 항목+중항목 그룹에서 첫 행만 항목·중항목 표시, 이후는 빈칸
+        ws[ea(0,R)]=em2(i===0?codeStr:'',s);
+        ws[ea(1,R)]=em2(i===0?middle:'',s);
+        ws[ea(2,R)]=em2(minor,s);
+        ws[ea(3,R)]=em2(amt,sa,true);
+        R++;ri++;
+      });
     });
-    ws[ea(0,R)]=em2('소 계',sSubL);ws[ea(1,R)]=em2('',sSubL);m.push({s:{r:R,c:0},e:{r:R,c:1}});ws[ea(2,R)]=em2(subTotal,sSub,true);R++;
+    ws[ea(0,R)]=em2('소 계',sSubL);for(let c=1;c<3;c++)ws[ea(c,R)]=em2('',sSubL);
+    m.push({s:{r:R,c:0},e:{r:R,c:2}});ws[ea(3,R)]=em2(subTotal,sSub,true);R++;
   });
-  ws[ea(0,R)]=em2('전 체 합 계',sTot);ws[ea(1,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:1}});ws[ea(2,R)]=em2(grandTotal,sTotA,true);R++;
-  ws['!ref']=`A1:C${R}`;ws['!merges']=m;ws['!cols']=[{wch:28},{wch:18},{wch:14}];
+  ws[ea(0,R)]=em2('전 체 합 계',sTot);for(let c=1;c<3;c++)ws[ea(c,R)]=em2('',sTot);
+  m.push({s:{r:R,c:0},e:{r:R,c:2}});ws[ea(3,R)]=em2(grandTotal,sTotA,true);R++;
+  ws['!ref']=`A1:D${R}`;ws['!merges']=m;
+  ws['!cols']=[{wch:18},{wch:16},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb,ws,'법인카드정산서');
-  // 카드별 상세 시트 (정산서 다음)
+  // 카드별 상세 시트 (날짜 오름차순 정렬)
   corpCards.forEach(card=>{
     const ws2={};const m2=[];let R2=0;
     const hdrs2=['날짜','항목','중항목','소항목','지출처','금액','증빙','세부내역'];
@@ -3211,22 +3229,22 @@ function exportCorpInvoice(){
     for(let c=1;c<hdrs2.length;c++)ws2[ea(c,R2)]=em2('',sTitle);
     m2.push({s:{r:R2,c:0},e:{r:R2,c:hdrs2.length-1}});R2++;
     hdrs2.forEach((h,c)=>ws2[ea(c,R2)]=em2(h,sHdr));R2++;
-    const cRows=Object.values(cardData[card.id]||{}).filter(r=>!mFilter||+r.month===mFilter).sort((a,b)=>(+a.month||0)-(+b.month||0));
+    const cRows=Object.values(cardData[card.id]||{}).filter(r=>!mFilter||+r.month===mFilter).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     let tot2=0;
     cRows.forEach((r,ri)=>{
       const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
       const amt=+r.amount||0;tot2+=amt;
       const bName=budgetCodes.find(b=>b.code===+r.code);
-      [r.date,`${r.code} ${bName?bName.name:''}`,r.middle,r.minor,r.vendor].forEach((v,c)=>ws2[ea(c,R2)]=em2(v,s));
-      ws2[ea(5,R2)]=em2(amt,sa,true);[r.proof,r.detail].forEach((v,c)=>ws2[ea(c+6,R2)]=em2(v,s));R2++;
+      [r.date||'',`${r.code||''} ${bName?bName.name:''}`,r.middle||'',r.minor||'',r.vendor||''].forEach((v,c)=>ws2[ea(c,R2)]=em2(v,s));
+      ws2[ea(5,R2)]=em2(amt,sa,true);[r.proof||'',r.detail||''].forEach((v,c)=>ws2[ea(c+6,R2)]=em2(v,s));R2++;
     });
     ws2[ea(0,R2)]=em2('합 계',sTot);for(let c=1;c<5;c++)ws2[ea(c,R2)]=em2('',sTot);m2.push({s:{r:R2,c:0},e:{r:R2,c:4}});
     ws2[ea(5,R2)]=em2(tot2,sTotA,true);for(let c=6;c<hdrs2.length;c++)ws2[ea(c,R2)]=em2('',sTot);R2++;
     ws2['!ref']=`A1:H${R2}`;ws2['!merges']=m2;
-    ws2['!cols']=[{wch:12},{wch:14},{wch:14},{wch:12},{wch:14},{wch:14},{wch:12},{wch:18}];
-    XLSX.utils.book_append_sheet(wb,ws2,(card.tabLabel||card.id).slice(0,31));
+    ws2['!cols']=[{wch:12},{wch:14},{wch:14},{wch:12},{wch:20},{wch:14},{wch:12},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws2,(card.person||card.tabLabel||card.id).slice(0,31));
   });
-  const fname=`법인카드정산서_${proj}_${tabLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const fname=`법인카드정산_${tabLabel}_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb,fname);showToast(`📥 ${fname} 저장 완료!`);
 }
 
@@ -3245,7 +3263,10 @@ function exportAdvInvoice(){
   const locationNote=appSettings.advLocationNote||'';
   const advCards=appSettings.cards.filter(c=>c.type==='선급금');
   let allRows=[];
-  advCards.forEach(card=>{Object.values(cardData[card.id]||{}).forEach(r=>{if(r.tabId?r.tabId===tabId:!tabId)allRows.push(r);});});
+  // 청구서 행(bill:true 또는 구버전은 tabId 있는 행)만 포함, 정산 행(bill:false) 제외
+  advCards.forEach(card=>{Object.values(cardData[card.id]||{}).forEach(r=>{
+    if(_isAdvBillRow(r)&&(r.tabId?r.tabId===tabId:!tabId))allRows.push(r);
+  });});
   allRows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const grandTotal=allRows.reduce((s,r)=>s+(+r.amount||0),0);
   const groupOrder=[];const groups={};
@@ -3351,7 +3372,10 @@ function exportAdvSettlement(){
     const seqNum=seqStr.replace(/[^0-9]/g,'')||'';
     const invTitle=`${proj} 선급금 ${seqNum?seqNum+'차 청구':seqStr+' 청구'}`;
     let allRows=[];
-    advCards.forEach(card=>{Object.values(cardData[card.id]||{}).forEach(r=>{if(r.tabId?r.tabId===invTabId:!invTabId)allRows.push(r);});});
+    // 청구서 행만 포함 (정산 행 제외)
+    advCards.forEach(card=>{Object.values(cardData[card.id]||{}).forEach(r=>{
+      if(_isAdvBillRow(r)&&(r.tabId?r.tabId===invTabId:!invTabId))allRows.push(r);
+    });});
     allRows.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     const grandTotal=allRows.reduce((s,r)=>s+(+r.amount||0),0);
     const groupOrder=[];const groups={};
@@ -3389,6 +3413,7 @@ function exportAdvSettlement(){
     const advCardByMid={};
     advCards.forEach(card=>{
       Object.values(cardData[card.id]||{}).forEach(r=>{
+        if(_isAdvBillRow(r))return;
         if(r.tabId&&r.tabId!==invTabId)return;
         const k=r.middle||'기타';advCardByMid[k]=(advCardByMid[k]||0)+(+r.amount||0);
       });
@@ -3396,36 +3421,34 @@ function exportAdvSettlement(){
     const tranByItem={};
     Object.values(transferData||{}).forEach(r=>{const k=r.item||'기타';tranByItem[k]=(tranByItem[k]||0)+calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);});
     const allKeys=[...new Set([...Object.keys(advCardByMid),...Object.keys(tranByItem)])].sort();
-    const COLS=4;
+    const COLS=5;
     const ws={};const m=[];let R=0;
-    ws[ea(0,R)]=em2(`${proj} 선급금 정산서`,sTitle);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
-    ws[ea(0,R)]=em2(`수입: ${n0(prevBal)} (전월잔액) + ${n0(advance)} (선급금) + ${n0(otherAmt)} (${otherLabel}) = 합계 ${n0(totalIncome)}`,sInfo);
-    for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sInfo);m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
-    ['항목 (중항목)','계좌이체','선급금카드','소계'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
+    ws[ea(0,R)]=em2(`${proj} ${cfg.seq||'1차'} 선급금 정산서`,sTitle);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
+    ['항목','중항목','계좌이체','선급금카드','소계'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
     let totCard=0,totTran=0;
     allKeys.forEach((k,i)=>{
       const c2=advCardByMid[k]||0,t=tranByItem[k]||0;totCard+=c2;totTran+=t;
       const s=i%2===0?sNorm:sEven;const sa=i%2===0?sAmt:sAmtE;
-      ws[ea(0,R)]=em2(k,s);ws[ea(1,R)]=em2(t,sa,true);ws[ea(2,R)]=em2(c2,sa,true);ws[ea(3,R)]=em2(t+c2,sBold,true);R++;
+      ws[ea(0,R)]=em2(k,s);ws[ea(1,R)]=em2('',s);ws[ea(2,R)]=em2(t,sa,true);ws[ea(3,R)]=em2(c2,sa,true);ws[ea(4,R)]=em2(t+c2,sBold,true);R++;
     });
     if(!allKeys.length){ws[ea(0,R)]=em2('선급금 거래 내역이 없습니다.',sNorm);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++;}
     const totExp=totCard+totTran;
-    ws[ea(0,R)]=em2('지출 합계',sTot);ws[ea(1,R)]=em2(totTran,sTotA,true);ws[ea(2,R)]=em2(totCard,sTotA,true);ws[ea(3,R)]=em2(totExp,sTotA,true);R++;
+    ws[ea(0,R)]=em2('지출 합계',sTot);ws[ea(1,R)]=em2('',sTot);ws[ea(2,R)]=em2(totTran,sTotA,true);ws[ea(3,R)]=em2(totCard,sTotA,true);ws[ea(4,R)]=em2(totExp,sTotA,true);R++;
     const bal=totalIncome-totExp;const isPos=bal>=0;
-    ws[ea(0,R)]=em2('계좌 잔액 (수입 - 지출)',isPos?sGrnL:sRedL);for(let c=1;c<3;c++)ws[ea(c,R)]=em2('',isPos?sGrnA:sRedA);m.push({s:{r:R,c:0},e:{r:R,c:2}});
-    ws[ea(3,R)]=em2(bal,isPos?sGrnA:sRedA,true);R++;
-    ws['!ref']=`A1:D${R}`;ws['!merges']=m;ws['!cols']=[{wch:24},{wch:15},{wch:15},{wch:15}];
+    ws[ea(0,R)]=em2('계좌 잔액 (수입 - 지출)',isPos?sGrnL:sRedL);for(let c=1;c<4;c++)ws[ea(c,R)]=em2('',isPos?sGrnA:sRedA);m.push({s:{r:R,c:0},e:{r:R,c:3}});
+    ws[ea(4,R)]=em2(bal,isPos?sGrnA:sRedA,true);R++;
+    ws['!ref']=`A1:E${R}`;ws['!merges']=m;ws['!cols']=[{wch:22},{wch:16},{wch:15},{wch:15},{wch:15}];
     XLSX.utils.book_append_sheet(wb,ws,'선급금 정산서');
   }
 
   // ══ 시트 3~: 산하 선급금 카드 시트 ══
   advCards.forEach(card=>{
     const rows=Object.values(cardData[card.id]||{})
-      .filter(r=>!invTabId||(r.tabId?r.tabId===invTabId:true))
+      .filter(r=>!_isAdvBillRow(r)&&(!invTabId||(r.tabId?r.tabId===invTabId:true)))
       .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     const hdrs=['날짜','항목','중항목','소항목','지출처','금액','증빙','세부내역'];
     const ws={};const m=[];let R=0;
-    ws[ea(0,R)]=em2(`${card.tabLabel||card.id} (${card.cardNum||''}) ${card.person||''}`,sTitle);
+    ws[ea(0,R)]=em2(`${proj} 선급금 (${card.person||card.tabLabel||card.id})`,sTitle);
     for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
     let tot=0;
@@ -3435,24 +3458,25 @@ function exportAdvSettlement(){
         const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
         const amt=+r.amount||0;tot+=amt;
         const bName=budgetCodes.find(b=>b.code===+r.code);
-        [r.date||'',`${r.code||''} ${bName?bName.name:''}`,r.middle||'',r.minor||'',r.vendor||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
+        const codeStr=`${r.code||''} ${bName?bName.name:''}`.trim();
+        [r.date||'',codeStr,r.middle||'',r.minor||'',r.vendor||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
         ws[ea(5,R)]=em2(amt,sa,true);[r.proof||'',r.detail||''].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,s));R++;
       });
     }
     ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<5;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:4}});
     ws[ea(5,R)]=em2(tot,sTotA,true);for(let c=6;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTot);R++;
     ws['!ref']=`A1:H${R}`;ws['!merges']=m;
-    ws['!cols']=[{wch:12},{wch:14},{wch:14},{wch:12},{wch:14},{wch:14},{wch:12},{wch:18}];
-    XLSX.utils.book_append_sheet(wb,ws,(card.tabLabel||card.id).slice(0,31));
+    ws['!cols']=[{wch:12},{wch:18},{wch:14},{wch:12},{wch:18},{wch:14},{wch:12},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws,(card.person||card.tabLabel||card.id).slice(0,31));
   });
 
   // ══ 마지막 시트: 계좌이체 ══
   {
-    const hdrs=['월','예산코드','항목','세부항목','거래처','날짜','공급가액','부가세','원천세','고용보험','실지급액','증빙','비고'];
+    const hdrs=['날짜','항목','중항목','세부항목','거래처','공급가액','부가세','원천세','고용보험','실지급액','증빙','세부내역'];
     const ws={};const m=[];let R=0;
     ws[ea(0,R)]=em2(`${proj} 계좌이체`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-    const trRows=Object.values(transferData||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
+    const trRows=Object.values(transferData||{}).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     let tots={sup:0,vat:0,tax:0,ins:0,net:0};
     if(!trRows.length){ws[ea(0,R)]=em2('계좌이체 내역이 없습니다.',sNorm);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sNorm);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;}
     else{
@@ -3461,16 +3485,17 @@ function exportAdvSettlement(){
         const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0,ins=+r.insurance||0,net=calcTrNet(sup,vat,tax,ins);
         tots.sup+=sup;tots.vat+=vat;tots.tax+=tax;tots.ins+=ins;tots.net+=net;
         const bName=budgetCodes.find(b=>b.code===+r.code);
-        [r.month,`${r.code||''} ${bName?bName.name:''}`,r.item||'',r.detail||'',r.vendor||'',r.date||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
-        [sup,vat,tax,ins,net].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,sa,true));
-        [r.proof||'',r.notes||''].forEach((v,c)=>ws[ea(c+11,R)]=em2(v,s));R++;
+        const codeStr=`${r.code||''} ${bName?bName.name:''}`.trim();
+        [r.date||'',codeStr,r.item||'',r.detail||'',r.vendor||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
+        [sup,vat,tax,ins,net].forEach((v,c)=>ws[ea(c+5,R)]=em2(v,sa,true));
+        [r.proof||'',r.notes||''].forEach((v,c)=>ws[ea(c+10,R)]=em2(v,s));R++;
       });
     }
-    ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<6;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:5}});
-    [tots.sup,tots.vat,tots.tax,tots.ins,tots.net].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,sTotA,true));
-    for(let c=11;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTot);R++;
-    ws['!ref']=`A1:M${R}`;ws['!merges']=m;
-    ws['!cols']=[{wch:5},{wch:14},{wch:14},{wch:16},{wch:16},{wch:12},{wch:13},{wch:11},{wch:11},{wch:11},{wch:13},{wch:12},{wch:14}];
+    ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<5;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:4}});
+    [tots.sup,tots.vat,tots.tax,tots.ins,tots.net].forEach((v,c)=>ws[ea(c+5,R)]=em2(v,sTotA,true));
+    for(let c=10;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTot);R++;
+    ws['!ref']=`A1:L${R}`;ws['!merges']=m;
+    ws['!cols']=[{wch:12},{wch:18},{wch:14},{wch:16},{wch:16},{wch:13},{wch:11},{wch:11},{wch:11},{wch:13},{wch:12},{wch:16}];
     XLSX.utils.book_append_sheet(wb,ws,'계좌이체');
   }
 
@@ -3496,7 +3521,7 @@ function importAdvSettlementExcel(input){
       const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});
       const advCards=appSettings.cards.filter(c=>c.type==='선급금');
       // 카드 tabLabel → card 맵
-      const cardMap={};advCards.forEach(c=>cardMap[(c.tabLabel||c.id).trim()]=c);
+      const cardMap={};advCards.forEach(c=>{cardMap[(c.tabLabel||c.id).trim()]=c;if(c.person)cardMap[c.person.trim()]=c;});
       let importedCards=0,importedTrans=0,skippedSheets=[];
 
       wb.SheetNames.forEach(sheetName=>{
@@ -3514,23 +3539,25 @@ function importAdvSettlementExcel(input){
             return i<arr.length-1&&first!==''&&first!=='합 계'&&first!=='합계';
           });
           dataRows.forEach(r=>{
-            const month=+r[0]||0;
+            // 컬럼 순서: 날짜·항목(코드+이름)·중항목·세부항목·거래처·공급가액·부가세·원천세·고용보험·실지급액·증빙·세부내역
+            const dateRaw=r[0];
+            const date=dateRaw instanceof Date
+              ?`${dateRaw.getFullYear()}-${String(dateRaw.getMonth()+1).padStart(2,'0')}-${String(dateRaw.getDate()).padStart(2,'0')}`
+              :String(dateRaw||'').trim();
+            const dateObj=new Date(date);
+            const month=date&&!isNaN(dateObj)?dateObj.getMonth()+1:0;
             const codeRaw=String(r[1]||'').trim();
             const code=+codeRaw.match(/\d+/)?.[0]||0;
             const item=String(r[2]||'').trim();
             const detail=String(r[3]||'').trim();
             const vendor=String(r[4]||'').trim();
-            const dateRaw=r[5];
-            const date=dateRaw instanceof Date
-              ?`${dateRaw.getFullYear()}-${String(dateRaw.getMonth()+1).padStart(2,'0')}-${String(dateRaw.getDate()).padStart(2,'0')}`
-              :String(dateRaw||'').trim();
-            const supply=_parseNum(r[6]);
-            const vat=_parseNum(r[7]);
-            const tax=_parseNum(r[8]);
-            const insurance=_parseNum(r[9]);
-            // r[10] = 실지급액 (계산값, 스킵)
-            const proof=String(r[11]||'').trim();
-            const notes=String(r[12]||'').trim();
+            const supply=_parseNum(r[5]);
+            const vat=_parseNum(r[6]);
+            const tax=_parseNum(r[7]);
+            const insurance=_parseNum(r[8]);
+            // r[9] = 실지급액 (계산값, 스킵)
+            const proof=String(r[10]||'').trim();
+            const notes=String(r[11]||'').trim();
             if(!item&&!vendor&&!supply)return; // 빈 행
             const row={month,code,item,detail,vendor,date,supply,vat,tax,insurance,proof,notes};
             if(isFirebase){
@@ -3557,12 +3584,13 @@ function importAdvSettlementExcel(input){
         });
         if(!cardData[card.id])cardData[card.id]={};
         dataRows.forEach(r=>{
-          // 새 컬럼 순서: 날짜·항목·중항목·소항목·지출처·금액·증빙·세부내역
+          // 컬럼 순서: 날짜·항목(코드+이름)·중항목·소항목·지출처·금액·증빙·세부내역
           const dateRaw=r[0];
           const date=dateRaw instanceof Date
             ?`${dateRaw.getFullYear()}-${String(dateRaw.getMonth()+1).padStart(2,'0')}-${String(dateRaw.getDate()).padStart(2,'0')}`
             :String(dateRaw||'').trim();
-          const month=/^\d{4}-(\d{2})/.test(date)?+date.slice(5,7):0;
+          const dateObj=new Date(date);
+          const month=date&&!isNaN(dateObj)?dateObj.getMonth()+1:0;
           const codeRaw=String(r[1]||'').trim();
           const code=+codeRaw.match(/\d+/)?.[0]||0;
           const middle=String(r[2]||'').trim();
@@ -3923,23 +3951,28 @@ function exportSettlementAll(type){
   // ── 카드별 시트
   appSettings.cards.forEach(card=>{
     const ws={};const m=[];let R=0;
+    const _isAdv=card.type==='선급금';
     const hdrs=['날짜','항목','중항목','소항목','지출처','금액','증빙','세부내역'];
-    ws[ea(0,R)]=em2(`${card.tabLabel} (${card.cardNum}) ${card.person}`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
+    ws[ea(0,R)]=em2(_isAdv?`${proj} 선급금 (${card.person||card.tabLabel||card.id})`:`${card.tabLabel} (${card.cardNum}) ${card.person}`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-    const rows=Object.values(cardData[card.id]||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
+    const rows=Object.values(cardData[card.id]||{})
+      .filter(r=>!_isAdv||!_isAdvBillRow(r))
+      .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     let tot=0;
     rows.forEach((r,ri)=>{
       const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
       const amt=+r.amount||0;tot+=amt;
       const bName=budgetCodes.find(b=>b.code===+r.code);
-      [r.date,`${r.code} ${bName?bName.name:''}`,r.middle,r.minor,r.vendor].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
-      ws[ea(5,R)]=em2(amt,sa,true);[r.proof,r.detail].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,s));R++;
+      const codeStr=`${r.code||''} ${bName?bName.name:''}`.trim();
+      [r.date||'',codeStr,r.middle||'',r.minor||'',r.vendor||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
+      ws[ea(5,R)]=em2(amt,sa,true);[r.proof||'',r.detail||''].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,s));
+      R++;
     });
     ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<5;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:4}});
     ws[ea(5,R)]=em2(tot,sTotA,true);for(let c=6;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTot);R++;
     ws['!ref']=`A1:H${R}`;ws['!merges']=m;
-    ws['!cols']=[{wch:12},{wch:14},{wch:14},{wch:12},{wch:14},{wch:14},{wch:12},{wch:18}];
-    XLSX.utils.book_append_sheet(wb,ws,(card.tabLabel||card.id).slice(0,31));
+    ws['!cols']=[{wch:12},{wch:18},{wch:14},{wch:12},{wch:18},{wch:14},{wch:12},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws,(card.person||card.tabLabel||card.id).slice(0,31));
   });
   // ── 계좌이체 시트
   {const ws={};const m=[];let R=0;
@@ -4718,27 +4751,31 @@ function exportCardAll(cid){
   const sAmtE=es2(EC.EVEN,EC.NAVY,false,10,'right');
   const sTot=es2(EC.NAVY,EC.WHITE,true,10,'center');
   const sTotA=es2(EC.NAVY,EC.WHITE,true,10,'right');
+  const _isAdv=card&&card.type==='선급금';
   const hdrs=['날짜','항목','중항목','소항목','지출처','금액','증빙','세부내역'];
   const ws={};const m=[];let R=0;
-  ws[ea(0,R)]=em2(`${proj} ${card&&card.type==='선급금'?'선급금 정산':'법인카드 정산'} (${label})`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
+  ws[ea(0,R)]=em2(_isAdv?`${proj} 선급금 (${label})`:`${proj} 법인카드 정산 (${label})`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
   hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-  const rows=Object.values(cardData[cid]||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
+  const rows=Object.values(cardData[cid]||{})
+    .filter(r=>!_isAdv||!_isAdvBillRow(r))
+    .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   let tot=0;
   rows.forEach((r,ri)=>{
     const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
     const amt=+r.amount||0;tot+=amt;
     const bName=budgetCodes.find(b=>b.code===+r.code);
-    [r.date,`${r.code||''} ${bName?bName.name:''}`,r.middle||'',r.minor||'',r.vendor||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
-    ws[ea(5,R)]=em2(amt,sa,true);
-    [r.proof||'',r.detail||''].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,s));R++;
+    const codeStr=`${r.code||''} ${bName?bName.name:''}`.trim();
+    [r.date||'',codeStr,r.middle||'',r.minor||'',r.vendor||''].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
+    ws[ea(5,R)]=em2(amt,sa,true);[r.proof||'',r.detail||''].forEach((v,c)=>ws[ea(c+6,R)]=em2(v,s));
+    R++;
   });
   ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<5;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:4}});
   ws[ea(5,R)]=em2(tot,sTotA,true);for(let c=6;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTot);R++;
   ws['!ref']=`A1:H${R}`;ws['!merges']=m;
-  ws['!cols']=[{wch:12},{wch:14},{wch:14},{wch:12},{wch:14},{wch:14},{wch:12},{wch:18}];
+  ws['!cols']=[{wch:12},{wch:18},{wch:14},{wch:12},{wch:18},{wch:14},{wch:12},{wch:20}];
   const sheetName=label.slice(0,31);
   XLSX.utils.book_append_sheet(wb,ws,sheetName);
-  const fname=`${card&&card.type==='선급금'?'선급금정산':'법인카드정산'}_${label}_${proj}_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const fname=`${_isAdv?'선급금정산':'법인카드정산'}_${label}_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb,fname);showToast(`📥 ${fname} 다운로드 완료!`);
 }
 
