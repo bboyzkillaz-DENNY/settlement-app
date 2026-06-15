@@ -382,13 +382,13 @@ body.role-pending .readonly-banner{display:block;}
           <table class="data-table" style="min-width:1200px">
             <thead><tr>
               <th class="cbc"><input type="checkbox" id="chk-person" onchange="toggleAll('person',this.checked)"></th>
-              <th>월</th><th>항목</th><th>세부항목</th><th>이름</th><th>주민번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
+              <th>항목</th><th>세부항목</th><th>이름</th><th>주민번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
               <th>공급가액</th><th>세액3.3%<span class="auto-badge">자동</span></th><th>예술인보험<span class="auto-badge">자동</span></th><th>실지급액<span class="auto-badge">자동</span></th>
               <th>비고</th><th>삭제</th>
             </tr></thead>
             <tbody id="body-person"></tbody>
             <tfoot><tr class="total-r">
-              <td></td><td colspan="8" style="text-align:center">총 계</td>
+              <td></td><td colspan="7" style="text-align:center">총 계</td>
               <td class="ac" id="pt-sup">0</td><td class="ac" id="pt-tax">0</td><td class="ac" id="pt-ins">0</td><td class="ac" id="pt-net">0</td>
               <td colspan="2"></td>
             </tr></tfoot>
@@ -407,13 +407,13 @@ body.role-pending .readonly-banner{display:block;}
           <table class="data-table" style="min-width:1200px">
             <thead><tr>
               <th class="cbc"><input type="checkbox" id="chk-biz" onchange="toggleAll('biz',this.checked)"></th>
-              <th>월</th><th>항목</th><th>세부항목</th><th>업체명</th><th>사업자번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
+              <th>항목</th><th>세부항목</th><th>업체명</th><th>사업자번호</th><th>은행</th><th>계좌번호</th><th>예금주</th>
               <th>공급가액</th><th>부가세<span class="auto-badge">자동</span></th><th>고용보험료</th><th>실지급액<span class="auto-badge">자동</span></th>
               <th>비고</th><th>삭제</th>
             </tr></thead>
             <tbody id="body-biz"></tbody>
             <tfoot><tr class="total-r">
-              <td></td><td colspan="8" style="text-align:center">총 계</td>
+              <td></td><td colspan="7" style="text-align:center">총 계</td>
               <td class="ac" id="bt-sup">0</td><td class="ac" id="bt-vat">0</td><td class="ac" id="bt-tax">0</td><td class="ac" id="bt-net">0</td>
               <td colspan="2"></td>
             </tr></tfoot>
@@ -1074,14 +1074,15 @@ function renderInvoice(cfg){
   // 개인 지급 / 업체 지급 분리 수집 (항목=예산코드, 세부항목=category, 이름=name)
   const persons=[],bizes=[];
   Object.values(personData||{}).forEach(r=>{
-    if(mFilter&&+r.month!==mFilter)return;
+    // invTabId 있으면 탭ID로, 없으면 month로 필터 (기존 데이터 호환)
+    if(r.invTabId ? r.invTabId!==currentInvTab : (mFilter&&+r.month!==mFilter))return;
     const sup=+r.supply||0;
     const tax=r.taxOverride!==undefined?+r.taxOverride:calcTax(sup);
     const ins=r.insOverride!==undefined?+r.insOverride:calcIns(sup);
     persons.push({code:+r.code||0,item:budgetName(r.code),sub:r.category||'',name:r.name||'',supply:sup,vat:0,tax,ins,net:sup-tax-ins});
   });
   Object.values(bizData||{}).forEach(r=>{
-    if(mFilter&&+r.month!==mFilter)return;
+    if(r.invTabId ? r.invTabId!==currentInvTab : (mFilter&&+r.month!==mFilter))return;
     const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0;
     bizes.push({code:+r.code||0,item:budgetName(r.code),sub:r.category||'',name:r.name||'',supply:sup,vat,tax,ins:0,net:calcBizNet(sup,vat,tax)});
   });
@@ -1276,7 +1277,7 @@ function renderActorInvoice(){
   const grades=_toArr(currentActorInvCfg?.grades||[]).length?_toArr(currentActorInvCfg.grades):(appSettings.actorGrades||['주연','조연','단역','무술']);
   const rows=[];
   Object.values(actorData||{}).forEach(r=>{
-    if(mFilter&&+r.month!==mFilter)return;
+    if(r.actorTabId ? r.actorTabId!==currentActorInvTab : (mFilter&&+r.month!==mFilter))return;
     if(!grades.includes(r.grade||'기타'))return; // 탭에 포함된 등급만
     const c=calcActor(r);
     rows.push({code:+r.code||0,grade:r.grade||'기타',name:r.name||'',role:r.role||'',fee:c.feeTot,deduct:c.deductions,net:c.netPay});
@@ -1415,7 +1416,7 @@ function renderActorTable(){
   if(thead){
     let hCols=`<tr>
       <th class="cbc"><input type="checkbox" id="chk-actor" onchange="toggleAll('actor',this.checked)"></th>
-      <th>월</th><th>예산코드</th><th>배역명</th><th>성명</th>
+      <th>예산코드</th><th>배역명</th><th>성명</th>
       <th>조합원</th><th>구분</th><th>회당출연료</th><th>횟수</th>
       <th>출연료합계<span class="auto-badge">자동</span></th>`;
     if(isMid){
@@ -1437,7 +1438,7 @@ function renderActorTable(){
   // tfoot 렌더링 — colspan=8: 월~횟수(8열), at-fee = 출연료합계 위치
   const tfoot=document.getElementById('actor-tfoot');
   if(tfoot){
-    let tfCols=`<tr class="total-r"><td></td><td colspan="8" style="text-align:right;padding-right:8px;font-weight:700">합 계</td>`;
+    let tfCols=`<tr class="total-r"><td></td><td colspan="7" style="text-align:right;padding-right:8px;font-weight:700">합 계</td>`;
     tfCols+=`<td class="ac" id="at-fee">0</td>`;
     if(isMid){tfCols+=`<td class="ac" id="at-extra">0</td><td class="ac" id="at-settled">0</td>`;}
     tfCols+=`<td class="ac" id="at-vat">0</td><td class="ac" id="at-union">0</td>
@@ -1448,8 +1449,13 @@ function renderActorTable(){
     tfoot.innerHTML=tfCols;
   }
   const tbody=document.getElementById('body-actor');if(!tbody)return;
-  // 현재 등급만 필터링 후 필터 적용
-  const gradeFiltered=Object.entries(actorData||{}).filter(([,r])=>r.grade===currentActorGrade);
+  // 현재 등급 + 현재 탭 필터링
+  const _mfA=+(currentActorInvCfg?.month||0);
+  const gradeFiltered=Object.entries(actorData||{}).filter(([,r])=>{
+    if(r.grade!==currentActorGrade)return false;
+    if(r.actorTabId ? r.actorTabId!==currentActorInvTab : (_mfA&&+r.month!==_mfA))return false;
+    return true;
+  });
   const f=filters['actor']||{};
   const filt=gradeFiltered.filter(([,r])=>{
     if(f.code&&+r.code!==+f.code)return false;
@@ -1457,7 +1463,7 @@ function renderActorTable(){
     if(f.type&&r.type!==f.type)return false;
     return true;
   }).sort(([,a],[,b])=>(+a.code||0)-(+b.code||0)||(a.role||'').localeCompare(b.role||'','ko')||(a.name||'').localeCompare(b.name||'','ko')); // 예산코드 오름차순 자동 정렬
-  const colCount=isSimple?22:24;
+  const colCount=isSimple?21:23;
   if(!filt.length){tbody.innerHTML=`<tr><td colspan="${colCount}" class="empty-state">${currentActorGrade} 출연료 정산 내역이 없습니다.</td></tr>`;updateActorTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const c=calcActor(r);
@@ -1465,7 +1471,6 @@ function renderActorTable(){
     const roleCel=`<td><input value="${esc(r.role||'')}" onchange="updA('${id}','role',this.value)" style="min-width:70px" placeholder="배역명 입력"></td>`;
     let row=`<tr id="ra-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('actor','${id}',this.checked)"></td>
-      <td><select onchange="updA('${id}','month',+this.value)" style="min-width:62px">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
       <td class="code-cell"><select onchange="updA('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:110px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
       ${roleCel}
       <td><input value="${esc(r.name||'')}" onchange="updA('${id}','name',this.value)" style="min-width:55px" placeholder="성명"></td>
@@ -1500,8 +1505,10 @@ function renderActorTable(){
 function updateActorTotals(){
   // ★ 화면에 표시된 행과 동일하게: 현재 등급 + 필터(월/코드/구분) 적용 후 합산
   const f=filters['actor']||{};
+  const _mfAT=+(currentActorInvCfg?.month||0);
   const gradeData=Object.values(actorData||{}).filter(r=>{
     if(r.grade!==currentActorGrade)return false;
+    if(r.actorTabId ? r.actorTabId!==currentActorInvTab : (_mfAT&&+r.month!==_mfAT))return false;
     if(f.code&&+r.code!==+f.code)return false;
     if(f.month&&+r.month!==+f.month)return false;
     if(f.type&&r.type!==f.type)return false;
@@ -1517,7 +1524,7 @@ function updateActorTotals(){
 }
 function addActorRow(){
   const tabMonth=+(currentActorInvCfg?.month||0)||new Date().getMonth()+1;
-  const row={month:tabMonth,code:400,role:'',name:'',grade:currentActorGrade,union:false,type:'원징',feePerEp:0,episodes:1,extra:0,ratio:1,payDate:'',notes:''};
+  const row={month:tabMonth,actorTabId:currentActorInvTab,code:400,role:'',name:'',grade:currentActorGrade,union:false,type:'원징',feePerEp:0,episodes:1,extra:0,ratio:1,payDate:'',notes:''};
   if(isFirebase){
     const ref=window.__fbi.push(window.__fbi.ref(`${DB}/actors`),row);
     const newId=ref.key;
@@ -1560,7 +1567,7 @@ function exportActorSheet(){
     const mFilter=+(currentActorInvCfg?.month||0);
     const invRows=[];
     Object.values(actorData||{}).forEach(r=>{
-      if(mFilter&&+r.month!==mFilter)return;
+      if(r.actorTabId ? r.actorTabId!==currentActorInvTab : (mFilter&&+r.month!==mFilter))return;
       const c=calcActor(r);
       invRows.push({grade:r.grade||'기타',name:r.name||'',role:r.role||'',fee:c.feeTot,deduct:c.deductions,net:c.netPay});
     });
@@ -1622,10 +1629,11 @@ function exportActorSheet(){
     const gi=grades.indexOf(grade);
     const isSimple=gi<2;
     const isMid=!isSimple&&gi===2;
-    const gradeData=Object.values(actorData||{}).filter(r=>r.grade===grade);
+    const _mfGrade=+(currentActorInvCfg?.month||0);
+    const gradeData=Object.values(actorData||{}).filter(r=>r.grade===grade&&(r.actorTabId ? r.actorTabId===currentActorInvTab : (!_mfGrade||+r.month===_mfGrade)));
     if(!gradeData.length)return;
     const ws={};const m=[];let R=0;
-    const hdrs=['월','예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
+    const hdrs=['예산코드','배역명','성명','조합원','구분','회당출연료','횟수','출연료합계'];
     if(!isSimple)hdrs.push('추가수당');
     if(!isSimple&&!isMid)hdrs.push('정산비율');
     if(!isSimple)hdrs.push('정산후합계');
@@ -1647,7 +1655,7 @@ function exportActorSheet(){
       tots.ie+=c.insEmp;tots.ic+=c.insComp;tots.deduct+=c.deductions;tots.net+=c.netPay;tots.cost+=c.totalCost;
       let ci=0;
       const put=(v,num)=>{ws[ea(ci,R)]=em2(v,num?sa:s,num);ci++;};
-      put(r.month,false);put(r.code,false);put(r.role,false);put(r.name,false);
+      put(r.code,false);put(r.role,false);put(r.name,false);
       put(r.union?'O':'X',false);put(r.type||'원징',false);
       put(r.feePerEp||0,true);put(r.episodes||0,true);put(c.feeTot,true);
       if(!isSimple){put(r.extra||0,true);if(!isMid)put(r.ratio||1,false);put(c.settled,true);}
@@ -1656,17 +1664,17 @@ function exportActorSheet(){
       put(r.payDate||'',false);put(r.notes||'',false);
       R++;
     });
-    // 합계 행 (cols 0-7 merge → label, 8=fee, then tails)
+    // 합계 행 (cols 0-6 merge → label, 7=fee, then tails)
     ws[ea(0,R)]=em2('합 계',sTot);
-    for(let c=1;c<8;c++)ws[ea(c,R)]=em2('',sTot);
-    m.push({s:{r:R,c:0},e:{r:R,c:7}});
-    ws[ea(8,R)]=em2(tots.fee,sTotA,true);
-    let tc=9;
+    for(let c=1;c<7;c++)ws[ea(c,R)]=em2('',sTot);
+    m.push({s:{r:R,c:0},e:{r:R,c:6}});
+    ws[ea(7,R)]=em2(tots.fee,sTotA,true);
+    let tc=8;
     if(!isSimple){ws[ea(tc,R)]=em2(tots.extra,sTotA,true);tc++;if(!isMid){ws[ea(tc,R)]=em2('',sTot);tc++;}ws[ea(tc,R)]=em2(tots.settled,sTotA,true);tc++;}
     [tots.vat,tots.union,tots.it,tots.rt,tots.ie,tots.ic,tots.deduct,tots.net,tots.cost].forEach(v=>{ws[ea(tc,R)]=em2(v,sTotA,true);tc++;});
     ws[ea(tc,R)]=em2('',sTot);tc++;ws[ea(tc,R)]=em2('',sTot);R++;
     ws['!ref']=`A1:${colLtr(COLS-1)}${R}`;ws['!merges']=m;
-    const colW=[{wch:5},{wch:10},{wch:10},{wch:10},{wch:7},{wch:7},{wch:13},{wch:7},{wch:12}];
+    const colW=[{wch:10},{wch:10},{wch:10},{wch:7},{wch:7},{wch:13},{wch:7},{wch:12}];
     if(!isSimple){colW.push({wch:10});if(!isMid)colW.push({wch:9});colW.push({wch:12});}
     colW.push({wch:9},{wch:7},{wch:9},{wch:8},{wch:11},{wch:11},{wch:10},{wch:12},{wch:12},{wch:12},{wch:14});
     ws['!cols']=colW;
@@ -1818,13 +1826,12 @@ function renderPersonTable(){
   const tbody=document.getElementById('body-person');if(!tbody)return;
   // 예산코드 오름차순 자동 정렬 → 세부항목 → 이름
   const filt=getFiltered('person').sort(([,a],[,b])=>(+a.code||0)-(+b.code||0)||(a.category||'').localeCompare(b.category||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
-  if(!filt.length){tbody.innerHTML=`<tr><td colspan="15" class="empty-state">개인 지급 내역이 없습니다.</td></tr>`;updatePersonTotals();return;}
+  if(!filt.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">개인 지급 내역이 없습니다.</td></tr>`;updatePersonTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const tax=calcTax(+r.supply||0),ins=calcIns(+r.supply||0),net=calcPersonNet(+r.supply||0);
     const sel=(selected.person||new Set()).has(id);
     return `<tr id="rp-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('person','${id}',this.checked)"></td>
-      <td><select onchange="updP('${id}','month',+this.value)">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
       <td class="code-cell"><select onchange="updP('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:120px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
       <td><input value="${esc(r.category)}" onchange="updP('${id}','category',this.value)" placeholder="세부항목" style="min-width:75px"></td>
       <td><input value="${esc(r.name)}" onchange="updP('${id}','name',this.value)" style="min-width:55px"></td>
@@ -1863,7 +1870,7 @@ function updatePersonTotals(){
 }
 function addPersonRow(){
   const tabMonth=+(currentInvCfg?.month||0)||new Date().getMonth()+1;
-  const row={month:tabMonth,code:budgetCodes[0]?.code||100,category:'',name:'',rrn:'',bank:'',account:'',holder:'',supply:0,notes:''};
+  const row={month:tabMonth,invTabId:currentInvTab,code:budgetCodes[0]?.code||100,category:'',name:'',rrn:'',bank:'',account:'',holder:'',supply:0,notes:''};
   if(isFirebase){
     const ref=window.__fbi.push(window.__fbi.ref(`${DB}/persons`),row);
     const newId=ref.key;
@@ -1892,13 +1899,12 @@ function renderBizTable(){
   const tbody=document.getElementById('body-biz');if(!tbody)return;
   // 예산코드 오름차순 자동 정렬 → 세부항목 → 업체명
   const filt=getFiltered('biz').sort(([,a],[,b])=>(+a.code||0)-(+b.code||0)||(a.category||'').localeCompare(b.category||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
-  if(!filt.length){tbody.innerHTML=`<tr><td colspan="15" class="empty-state">업체 지급 내역이 없습니다.</td></tr>`;updateBizTotals();return;}
+  if(!filt.length){tbody.innerHTML=`<tr><td colspan="14" class="empty-state">업체 지급 내역이 없습니다.</td></tr>`;updateBizTotals();return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const net=calcBizNet(+r.supply||0,+r.vat||0,+r.tax||0);
     const sel=(selected.biz||new Set()).has(id);
     return `<tr id="rb-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('biz','${id}',this.checked)"></td>
-      <td><select onchange="updB('${id}','month',+this.value)">${[1,2,3,4,5,6,7,8,9,10,11,12].map(m=>`<option value="${m}" ${+r.month===m?'selected':''}>${m}월</option>`).join('')}</select></td>
       <td class="code-cell"><select onchange="updB('${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:120px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
       <td><input value="${esc(r.category)}" onchange="updB('${id}','category',this.value)" placeholder="세부항목" style="min-width:75px"></td>
       <td><input value="${esc(r.name)}" onchange="updB('${id}','name',this.value)" style="min-width:90px"></td>
@@ -1926,7 +1932,7 @@ function updateBizTotals(){
 }
 function addBizRow(){
   const tabMonth=+(currentInvCfg?.month||0)||new Date().getMonth()+1;
-  const row={month:tabMonth,code:budgetCodes[0]?.code||100,category:'',name:'',bizNum:'',bank:'',account:'',holder:'',supply:0,vat:0,tax:0,notes:''};
+  const row={month:tabMonth,invTabId:currentInvTab,code:budgetCodes[0]?.code||100,category:'',name:'',bizNum:'',bank:'',account:'',holder:'',supply:0,vat:0,tax:0,notes:''};
   if(isFirebase){
     const ref=window.__fbi.push(window.__fbi.ref(`${DB}/businesses`),row);
     const newId=ref.key;
@@ -2347,20 +2353,22 @@ function saveAdvInvRow(cid,rid,field,val){
   if(!cardData[cid][rid])cardData[cid][rid]={};
   cardData[cid][rid][field]=(field==='amount'?(+val||0):val);
   clearTimeout(saveTimer[`adv_${cid}_${rid}`]);
-  saveTimer[`adv_${cid}_${rid}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${rid}`,{[field]:cardData[cid][rid][field]}),10000); // 입력 멈춘 뒤 10초 후 자동저장(입력 중에는 타이머가 계속 리셋되어 저장 안 함)
-  persistCardsLocal(); // localStorage 백업
-  // 합계 즉시 업데이트
-  const advCards=appSettings.cards.filter(c=>c.type==='선급금');
-  const tabId=currentAdvInvTab;
-  let gt=0;
-  advCards.forEach(card=>{Object.values(cardData[card.id]||{}).forEach(r=>{if(r.tabId?r.tabId===tabId:!tabId)gt+=(+r.amount||0);});});
-  const totEl=document.getElementById('adv-inv-grand-total');
-  if(totEl)totEl.textContent=(gt||0).toLocaleString('ko-KR');
-  if(!appSettings.settlementInfo)appSettings.settlementInfo={};
-  appSettings.settlementInfo.advance=gt;
-  const advEl=document.getElementById('s-advance');
-  if(advEl){advEl.value=fmtI(gt);renderSettlementAdv();}
-  renderFinal();
+  saveTimer[`adv_${cid}_${rid}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${rid}`,{[field]:cardData[cid][rid][field]}),10000);
+  persistCardsLocal();
+  // DOM 업데이트를 다음 이벤트루프로 미룸 → 한국어 IME 조합 완료 후 실행되어 글자 중복 방지
+  setTimeout(()=>{
+    const advCards=appSettings.cards.filter(c=>c.type==='선급금');
+    const tabId=currentAdvInvTab;
+    let gt=0;
+    advCards.forEach(card=>{Object.values(cardData[card.id]||{}).forEach(r=>{if(r.tabId?r.tabId===tabId:!tabId)gt+=(+r.amount||0);});});
+    const totEl=document.getElementById('adv-inv-grand-total');
+    if(totEl)totEl.textContent=(gt||0).toLocaleString('ko-KR');
+    if(!appSettings.settlementInfo)appSettings.settlementInfo={};
+    appSettings.settlementInfo.advance=gt;
+    const advEl=document.getElementById('s-advance');
+    if(advEl){advEl.value=fmtI(gt);renderSettlementAdv();}
+    renderFinal();
+  },0);
 }
 function addAdvInvRow(){
   const _allAdv=appSettings.cards.filter(c=>c.type==='선급금');
@@ -2854,11 +2862,11 @@ function buildCardPanel(card,active){
         <table class="data-table" style="min-width:1100px">
           <thead><tr>
             <th class="cbc"><input type="checkbox" id="chk-${cid}" onchange="toggleAll('${cid}',this.checked)"></th>
-            ${_isAdv?'<th>차수</th>':''}<th>날짜</th><th>항목</th><th>중항목</th><th>소항목</th><th>지출처</th>
+            <th>날짜</th><th>항목</th><th>중항목</th><th>소항목</th><th>지출처</th>
             <th>금액</th><th>증빙</th><th>세부내역</th><th>삭제</th>
           </tr></thead>
           <tbody id="body-${cid}"></tbody>
-          <tfoot><tr class="total-r"><td></td><td colspan="${_isAdv?6:5}" style="text-align:center">총 계</td><td class="ac" id="total-${cid}">0</td><td colspan="3"></td></tr></tfoot>
+          <tfoot><tr class="total-r"><td></td><td colspan="5" style="text-align:center">총 계</td><td class="ac" id="total-${cid}">0</td><td colspan="3"></td></tr></tfoot>
         </table>
       </div>
     </div>
@@ -3408,43 +3416,158 @@ function exportAdvSettlement(){
     XLSX.utils.book_append_sheet(wb,ws,`${seqStr} 청구서`.slice(0,31));
   }
 
-  // ══ 시트 2: 정산서 ══
+  // ══ 시트 2: 정산서 ══ (화면 renderSettlementAdv와 동일한 구성: 요약 + 세부내역)
   {
-    const advCardByMid={};
+    const _bName2=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
+    const _key2=(code,mid)=>`${code||0}|${mid||'기타'}`;
+    const grp2={};
     advCards.forEach(card=>{
       Object.values(cardData[card.id]||{}).forEach(r=>{
         if(_isAdvBillRow(r))return;
-        if(r.tabId&&r.tabId!==invTabId)return;
-        const k=r.middle||'기타';advCardByMid[k]=(advCardByMid[k]||0)+(+r.amount||0);
+        if(r.tabId!==invTabId)return; // strict: 이 차수 데이터만
+        const amt=+r.amount||0;
+        const k=_key2(r.code,r.middle);
+        if(!grp2[k])grp2[k]={code:+r.code||0,mid:r.middle||'기타',card:0,tran:0};
+        grp2[k].card+=amt;
       });
     });
-    const tranByItem={};
-    Object.values(transferData||{}).forEach(r=>{const k=r.item||'기타';tranByItem[k]=(tranByItem[k]||0)+calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);});
-    const allKeys=[...new Set([...Object.keys(advCardByMid),...Object.keys(tranByItem)])].sort();
+    Object.values(transferData||{}).forEach(r=>{
+      if(r.tabId!==invTabId)return; // strict: 이 차수 데이터만
+      const net=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
+      const k=_key2(r.code,r.item);
+      if(!grp2[k])grp2[k]={code:+r.code||0,mid:r.item||'기타',card:0,tran:0};
+      grp2[k].tran+=net;
+    });
+    const groups2=Object.values(grp2).sort((a,b)=>(a.code-b.code)||a.mid.localeCompare(b.mid,'ko'));
+    // 합계 먼저 계산 (요약 섹션에 사용)
+    let totCard=0,totTran=0;
+    groups2.forEach(g=>{totCard+=g.card;totTran+=g.tran;});
+    const totExp=totCard+totTran;
+    const bal=totalIncome-totExp;
+    const isPos=bal>=0;
     const COLS=5;
     const ws={};const m=[];let R=0;
-    ws[ea(0,R)]=em2(`${proj} ${cfg.seq||'1차'} 선급금 정산서`,sTitle);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
-    ['항목','중항목','계좌이체','선급금카드','소계'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-    let totCard=0,totTran=0;
-    allKeys.forEach((k,i)=>{
-      const c2=advCardByMid[k]||0,t=tranByItem[k]||0;totCard+=c2;totTran+=t;
+
+    // ── 타이틀 ──
+    ws[ea(0,R)]=em2(`${proj} ${cfg.seq||'1차'} 선급금 정산서`,sTitle);
+    for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sTitle);
+    m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
+
+    // ── 요약 섹션: 항목명 + 금액 2열 ──
+    const sSumHdr=es2('3949AB',EC.WHITE,true,10,'left');
+    const sSumAmt=es2('3949AB',EC.WHITE,true,10,'right');
+    const sSumL=es2(EC.LIGHT,EC.NAVY,false,10,'left');
+    const sSumA=es2(EC.LIGHT,EC.NAVY,false,10,'right');
+    const sSumBL=es2(EC.EVEN,'1A237E',true,10,'left');
+    const sSumBA=es2(EC.EVEN,'1A237E',true,10,'right');
+
+    // 청구금액(수령)
+    ws[ea(0,R)]=em2('청구금액 (수령)',sSumHdr);ws[ea(1,R)]=em2('',sSumHdr);ws[ea(2,R)]=em2('',sSumHdr);ws[ea(3,R)]=em2('',sSumHdr);ws[ea(4,R)]=em2(totalIncome,sSumAmt,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    ws[ea(0,R)]=em2('전월 계좌잔액',sSumL);ws[ea(1,R)]=em2('',sSumL);ws[ea(2,R)]=em2('',sSumL);ws[ea(3,R)]=em2('',sSumL);ws[ea(4,R)]=em2(prevBal,sSumA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    ws[ea(0,R)]=em2(`선급금 수령액 (${cfg.seq||'1차'} 청구서)`,sSumL);ws[ea(1,R)]=em2('',sSumL);ws[ea(2,R)]=em2('',sSumL);ws[ea(3,R)]=em2('',sSumL);ws[ea(4,R)]=em2(advance,sSumA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    ws[ea(0,R)]=em2(otherLabel||'기타 수입',sSumL);ws[ea(1,R)]=em2('',sSumL);ws[ea(2,R)]=em2('',sSumL);ws[ea(3,R)]=em2('',sSumL);ws[ea(4,R)]=em2(otherAmt,sSumA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+
+    // 빈 행 (구분)
+    for(let c=0;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++;
+
+    // 정산금액(실지출)
+    const sExpHdr=es2('E65100',EC.WHITE,true,10,'left');
+    const sExpAmt=es2('E65100',EC.WHITE,true,10,'right');
+    const sExpL=es2('FFF3E0','BF360C',false,10,'left');
+    const sExpA=es2('FFF3E0','BF360C',false,10,'right');
+    ws[ea(0,R)]=em2('정산금액 (실지출)',sExpHdr);ws[ea(1,R)]=em2('',sExpHdr);ws[ea(2,R)]=em2('',sExpHdr);ws[ea(3,R)]=em2('',sExpHdr);ws[ea(4,R)]=em2(totExp,sExpAmt,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    ws[ea(0,R)]=em2('선급금카드 지출',sExpL);ws[ea(1,R)]=em2('',sExpL);ws[ea(2,R)]=em2('',sExpL);ws[ea(3,R)]=em2('',sExpL);ws[ea(4,R)]=em2(totCard,sExpA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    ws[ea(0,R)]=em2('계좌이체 지출',sExpL);ws[ea(1,R)]=em2('',sExpL);ws[ea(2,R)]=em2('',sExpL);ws[ea(3,R)]=em2('',sExpL);ws[ea(4,R)]=em2(totTran,sExpA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+
+    // 빈 행 (구분)
+    for(let c=0;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++;
+
+    // 잔액
+    const sBalL=isPos?sGrnL:sRedL;const sBalA=isPos?sGrnA:sRedA;
+    const balLabel=isPos?'잔액 (반납/이월)':'초과 지출 (추가청구)';
+    ws[ea(0,R)]=em2(balLabel,sBalL);ws[ea(1,R)]=em2('',sBalL);ws[ea(2,R)]=em2('',sBalL);ws[ea(3,R)]=em2('',sBalL);ws[ea(4,R)]=em2(bal,sBalA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+
+    // 빈 행 (구분)
+    for(let c=0;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++;
+
+    // ── 정산 세부 내역 헤더 ──
+    const sSecHdr=es2('1B5E20',EC.WHITE,true,11,'center');
+    ws[ea(0,R)]=em2('정산 세부 내역 (개별탭 + 계좌이체)',sSecHdr);
+    for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sSecHdr);
+    m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
+
+    ['항목','중항목','계좌이체','선급금카드','정산 소계'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
+
+    // 세부 내역 행
+    groups2.forEach((g,i)=>{
       const s=i%2===0?sNorm:sEven;const sa=i%2===0?sAmt:sAmtE;
-      ws[ea(0,R)]=em2(k,s);ws[ea(1,R)]=em2('',s);ws[ea(2,R)]=em2(t,sa,true);ws[ea(3,R)]=em2(c2,sa,true);ws[ea(4,R)]=em2(t+c2,sBold,true);R++;
+      ws[ea(0,R)]=em2(_bName2(g.code),s);ws[ea(1,R)]=em2(g.mid,s);
+      ws[ea(2,R)]=em2(g.tran,sa,true);ws[ea(3,R)]=em2(g.card,sa,true);ws[ea(4,R)]=em2(g.tran+g.card,sBold,true);R++;
     });
-    if(!allKeys.length){ws[ea(0,R)]=em2('선급금 거래 내역이 없습니다.',sNorm);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++;}
-    const totExp=totCard+totTran;
-    ws[ea(0,R)]=em2('지출 합계',sTot);ws[ea(1,R)]=em2('',sTot);ws[ea(2,R)]=em2(totTran,sTotA,true);ws[ea(3,R)]=em2(totCard,sTotA,true);ws[ea(4,R)]=em2(totExp,sTotA,true);R++;
-    const bal=totalIncome-totExp;const isPos=bal>=0;
-    ws[ea(0,R)]=em2('계좌 잔액 (수입 - 지출)',isPos?sGrnL:sRedL);for(let c=1;c<4;c++)ws[ea(c,R)]=em2('',isPos?sGrnA:sRedA);m.push({s:{r:R,c:0},e:{r:R,c:3}});
-    ws[ea(4,R)]=em2(bal,isPos?sGrnA:sRedA,true);R++;
-    ws['!ref']=`A1:E${R}`;ws['!merges']=m;ws['!cols']=[{wch:22},{wch:16},{wch:15},{wch:15},{wch:15}];
+    if(!groups2.length){ws[ea(0,R)]=em2('선급금 거래 내역이 없습니다.',sNorm);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++;}
+
+    // 정산금액 합계 행
+    ws[ea(0,R)]=em2('정산금액 합계',sTot);ws[ea(1,R)]=em2('',sTot);
+    ws[ea(2,R)]=em2(totTran,sTotA,true);ws[ea(3,R)]=em2(totCard,sTotA,true);ws[ea(4,R)]=em2(totExp,sTotA,true);
+    m.push({s:{r:R,c:0},e:{r:R,c:1}});R++;
+
+    // ── 인원별 정산 소계 (화면 칩과 동일) ──
+    for(let c=0;c<COLS;c++)ws[ea(c,R)]=em2('',sNorm);R++; // 빈 행
+    const sPersHdr=es2('1B5E20',EC.WHITE,true,10,'center');
+    ws[ea(0,R)]=em2('인원별 정산 소계',sPersHdr);
+    for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sPersHdr);
+    m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
+
+    const sPersL=es2('E8F5E9','1B5E20',true,10,'left');
+    const sPersA=es2('E8F5E9','1B5E20',true,10,'right');
+    const sTranL=es2('E0F2F1','00695C',true,10,'left');
+    const sTranA=es2('E0F2F1','00695C',true,10,'right');
+
+    // 각 인원 소계
+    advCards.forEach(card=>{
+      const pLabel=card.person||card.tabLabel||card.id;
+      let pSum=0;
+      Object.values(cardData[card.id]||{}).forEach(r=>{
+        if(!_isAdvBillRow(r)&&r.tabId===invTabId)pSum+=(+r.amount||0);
+      });
+      if(!pSum)return;
+      ws[ea(0,R)]=em2(`👤 ${pLabel}`,sPersL);
+      for(let c=1;c<4;c++)ws[ea(c,R)]=em2('',sPersL);
+      ws[ea(4,R)]=em2(pSum,sPersA,true);
+      m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    });
+
+    // 계좌이체 소계
+    let trSum=0;
+    Object.values(transferData||{}).forEach(r=>{
+      if(r.tabId!==invTabId)return; // strict: 이 차수만
+      trSum+=calcTrNet(+r.supply||0,+r.vat||0,+r.tax||0,+r.insurance||0);
+    });
+    if(trSum){
+      ws[ea(0,R)]=em2('🏦 계좌이체',sTranL);
+      for(let c=1;c<4;c++)ws[ea(c,R)]=em2('',sTranL);
+      ws[ea(4,R)]=em2(trSum,sTranA,true);
+      m.push({s:{r:R,c:0},e:{r:R,c:3}});R++;
+    }
+
+    ws['!ref']=`A1:E${R}`;ws['!merges']=m;
+    ws['!cols']=[{wch:26},{wch:18},{wch:15},{wch:15},{wch:15}];
+    ws['!rows']=[{hpt:22}];
     XLSX.utils.book_append_sheet(wb,ws,'선급금 정산서');
   }
 
   // ══ 시트 3~: 산하 선급금 카드 시트 ══
   advCards.forEach(card=>{
     const rows=Object.values(cardData[card.id]||{})
-      .filter(r=>!_isAdvBillRow(r)&&(!invTabId||(r.tabId?r.tabId===invTabId:true)))
+      .filter(r=>!_isAdvBillRow(r)&&r.tabId===invTabId) // strict: 이 차수만
       .sort((a,b)=>(a.date||'').localeCompare(b.date||''));
     const hdrs=['날짜','항목','중항목','소항목','지출처','금액','증빙','세부내역'];
     const ws={};const m=[];let R=0;
@@ -3476,7 +3599,7 @@ function exportAdvSettlement(){
     const ws={};const m=[];let R=0;
     ws[ea(0,R)]=em2(`${proj} 계좌이체`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-    const trRows=Object.values(transferData||{}).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const trRows=Object.values(transferData||{}).filter(r=>r.tabId===invTabId).sort((a,b)=>(a.date||'').localeCompare(b.date||'')); // strict: 이 차수만
     let tots={sup:0,vat:0,tax:0,ins:0,net:0};
     if(!trRows.length){ws[ea(0,R)]=em2('계좌이체 내역이 없습니다.',sNorm);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sNorm);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;}
     else{
@@ -4020,22 +4143,15 @@ function refreshCardTable(cid){
   const _card=appSettings.cards.find(c=>c.id===cid);
   const _isAdv=_card&&_card.type==='선급금';
   let filt=getFiltered(cid).sort(([,a],[,b])=>(a.date||'').localeCompare(b.date||''));
-  // 선급금 개별탭: 청구서 행만 제외하고 모든 차수의 정산행을 항상 표시(각 행에 차수 선택칸 제공)
-  if(_isAdv)filt=filt.filter(([,r])=>!_isAdvBillRow(r));
-  const _advTabs=_isAdv?_toArr(appSettings.advInvTabs||[]).filter(Boolean):[];
-  const _seqCell=(r,id)=>{
-    if(!_isAdv)return '';
-    let opts=_advTabs.map(t=>`<option value="${t.id}" ${r.tabId===t.id?'selected':''}>${esc(t.seq||'차수')}</option>`).join('');
-    if(r.tabId&&!_advTabs.some(t=>t.id===r.tabId))opts=`<option value="${esc(r.tabId)}" selected>(미지정)</option>`+opts;
-    return `<td><select onchange="updC('${cid}','${id}','tabId',this.value)" style="min-width:60px;font-size:11px;color:#6a1b9a;font-weight:700" title="이 행이 속한 청구서 차수">${opts}</select></td>`;
-  };
-  if(!filt.length){tbody.innerHTML=`<tr><td colspan="${_isAdv?11:10}" class="empty-state">지출 내역이 없습니다.</td></tr>`;const te=document.getElementById(`total-${cid}`);if(te)te.textContent='0';return;}
+  // 선급금 개별탭: 청구서 행 제외 + 현재 선택된 차수(currentAdvInvTab)의 정산행만 표시
+  if(_isAdv)filt=filt.filter(([,r])=>!_isAdvBillRow(r)&&r.tabId===currentAdvInvTab);
+  if(!filt.length){tbody.innerHTML=`<tr><td colspan="10" class="empty-state">지출 내역이 없습니다.</td></tr>`;const te=document.getElementById(`total-${cid}`);if(te)te.textContent='0';return;}
   tbody.innerHTML=filt.map(([id,r])=>{
     const sel=(selected[cid]||new Set()).has(id);
-    // 순서: (차수) → 날짜 → 항목(예산코드) → 중항목 → 소항목 → 지출처 → 금액 → 증빙 → 세부내역
+    // 순서: 날짜 → 항목(예산코드) → 중항목 → 소항목 → 지출처 → 금액 → 증빙 → 세부내역
     return `<tr id="rc-${cid}-${id}" class="${sel?'selected':''}">
       <td class="cbc"><input type="checkbox" ${sel?'checked':''} onchange="toggleRow('${cid}','${id}',this.checked)"></td>
-      ${_seqCell(r,id)}<td><input type="date" value="${r.date||''}" onchange="updCDate('${cid}','${id}',this.value)" style="min-width:120px"></td>
+      <td><input type="date" value="${r.date||''}" onchange="updCDate('${cid}','${id}',this.value)" style="min-width:120px"></td>
       <td><select onchange="updC('${cid}','${id}','code',+this.value)" style="color:#3949ab;font-weight:600;font-size:11px;min-width:110px">${budgetCodes.map(b=>`<option value="${b.code}" ${+r.code===b.code?'selected':''}>${b.code} ${b.name}</option>`).join('')}</select></td>
       <td><input value="${esc(r.middle)}" onchange="updC('${cid}','${id}','middle',this.value)" style="min-width:80px"></td>
       <td><input value="${esc(r.minor)}" onchange="updC('${cid}','${id}','minor',this.value)" style="min-width:60px"></td>
@@ -4071,11 +4187,14 @@ function updC(cid,id,field,val){
   if(!cardData[cid])cardData[cid]={};
   if(!cardData[cid][id])cardData[cid][id]={};
   cardData[cid][id][field]=val;
-  refreshCardTable(cid);renderFinal();
-  // 선급금 정산서 패널이 열려 있으면 즉시 반영
-  const _sp=document.getElementById('cpanel-adv-settlement');
-  if(_sp&&_sp.style.display!=='none')renderSettlementAdv();
-  saveTimer[`c_${cid}_${id}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${id}`,{[field]:val}),10000);persistCardsLocal(); // 입력 멈춘 뒤 10초 후 자동저장
+  saveTimer[`c_${cid}_${id}`]=setTimeout(()=>dbUpdate(`cards/${cid}/${id}`,{[field]:val}),10000);
+  persistCardsLocal();
+  // DOM 업데이트를 다음 이벤트루프로 미룸 → 한국어 IME 조합 완료 후 실행되어 글자 중복 방지
+  setTimeout(()=>{
+    refreshCardTable(cid);renderFinal();
+    const _sp=document.getElementById('cpanel-adv-settlement');
+    if(_sp&&_sp.style.display!=='none')renderSettlementAdv();
+  },0);
 }
 function delCard(cid,id){
   if(!confirm('삭제하시겠습니까?'))return;
@@ -4241,6 +4360,11 @@ function getFiltered(tid){
   const f=filters[tid]||{};
   const data=getDataForTid(tid);
   return Object.entries(data).filter(([,r])=>{
+    // 월정산 탭별 분리
+    if(tid==='person'||tid==='biz'){
+      const _mf=+(currentInvCfg?.month||0);
+      if(r.invTabId ? r.invTabId!==currentInvTab : (_mf&&+r.month!==_mf))return false;
+    }
     if(f.code&&+r.code!==+f.code)return false;
     if(f.month&&+r.month!==+f.month)return false;
     if(f.category&&r.category!==f.category)return false;
@@ -4628,29 +4752,39 @@ function exportMonthly(){
   const sAuto=es2(EC.AUTO,EC.GREEN,true,10,'right');
   const sTot=es2(EC.NAVY,EC.WHITE,true,10,'center');
   const sTotA=es2(EC.NAVY,EC.WHITE,true,10,'right');
-  // 정산서 시트 (renderInvoice 화면과 동일) ── 첫 번째
+  // 정산서 시트 — renderInvoice()와 완전히 동일한 집계 방식
   {const ws={};const m=[];let R=0;
     const company=projectInfo.company||'';const manager=projectInfo.manager||'';
     const today=new Date().toLocaleDateString('ko-KR');
-    const tabLabel=monthlyInvLabel(currentInvCfg||{month:0,seq:'1차'});
-    const invRows=[];
+    const thisCfg=currentInvCfg||{month:0,seq:'1차'};
+    const tabLabel=monthlyInvLabel(thisCfg);
+    const mFilter=+thisCfg.month||0; // 현재 탭의 월 (0=전체)
+    const budgetName=(code)=>{const b=budgetCodes.find(x=>+x.code===+code);return b?`${b.code} ${b.name}`:(code?String(code):'기타');};
+    // renderInvoice()와 동일: persons/bizes 분리, taxOverride/insOverride 적용, code 기준 그룹핑
+    const persons=[],bizes=[];
     Object.values(personData||{}).forEach(r=>{
-      const sup=+r.supply||0,tax=calcTax(sup),ins=calcIns(sup),net=calcPersonNet(sup);
-      invRows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat:0,tax,ins,net});
+      if(r.invTabId ? r.invTabId!==currentInvTab : (mFilter&&+r.month!==mFilter))return;
+      const sup=+r.supply||0;
+      const tax=r.taxOverride!==undefined?+r.taxOverride:calcTax(sup);
+      const ins=r.insOverride!==undefined?+r.insOverride:calcIns(sup);
+      persons.push({code:+r.code||0,item:budgetName(r.code),sub:r.category||'',name:r.name||'',supply:sup,vat:0,tax,ins,net:sup-tax-ins});
     });
     Object.values(bizData||{}).forEach(r=>{
-      const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0,net=calcBizNet(sup,vat,tax);
-      invRows.push({cat:r.category||'기타',name:r.name||'',sub:r.notes||'',supply:sup,vat,tax,ins:0,net});
+      if(r.invTabId ? r.invTabId!==currentInvTab : (mFilter&&+r.month!==mFilter))return;
+      const sup=+r.supply||0,vat=+r.vat||0,tax=+r.tax||0;
+      bizes.push({code:+r.code||0,item:budgetName(r.code),sub:r.category||'',name:r.name||'',supply:sup,vat,tax,ins:0,net:calcBizNet(sup,vat,tax)});
     });
-    const totalNet=invRows.reduce((a,r)=>a+r.net,0);
-    const totalSupply=invRows.reduce((a,r)=>a+r.supply,0);
-    const cats=[...new Set(invRows.map(r=>r.cat))];
+    const allRows=[...persons,...bizes];
+    const totalNet=allRows.reduce((a,r)=>a+r.net,0);
+    const totalSupply=allRows.reduce((a,r)=>a+r.supply,0);
     const COLS=8;
     const sT=es2(EC.NAVY,EC.WHITE,true,13,'center');
     const sIL=es2(EC.LIGHT,EC.NAVY,true,10,'left');
     const sIV=es2(EC.WHITE,EC.BLACK,false,10,'left');
     const sIVN=es2(EC.WHITE,'1A237E',true,11,'right');
-    const sCat=es2('F5F6FA',EC.BLACK,true,10,'center');
+    const sSecP=es2('2D5016',EC.WHITE,true,10,'left');  // 개인지급 섹션 헤더
+    const sSecB=es2('004D40',EC.WHITE,true,10,'left');  // 업체지급 섹션 헤더
+    const sItem=es2('F5F6FA',EC.BLACK,true,10,'center'); // 항목(예산코드) 셀
     const sH=es2(EC.LIGHT,EC.NAVY,true,10,'center');
     const sN=es2(EC.WHITE,EC.BLACK,false,10,'left');
     const sE=es2(EC.EVEN,EC.BLACK,false,10,'left');
@@ -4658,79 +4792,97 @@ function exportMonthly(){
     const sAE=es2(EC.EVEN,EC.NAVY,false,10,'right');
     const sTT=es2(EC.NAVY,EC.WHITE,true,10,'center');
     const sTTA=es2(EC.NAVY,EC.WHITE,true,10,'right');
+    // 타이틀
     ws[ea(0,R)]=em2(`${proj} 월정산 정산서`,sT);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sT);m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
+    // 메타 정보
     ws[ea(0,R)]=em2('제작사',sIL);ws[ea(1,R)]=em2(company,sIV);m.push({s:{r:R,c:1},e:{r:R,c:2}});ws[ea(2,R)]=em2('',sIV);
     ws[ea(3,R)]=em2('프로젝트명',sIL);ws[ea(4,R)]=em2(proj,sIV);m.push({s:{r:R,c:4},e:{r:R,c:5}});ws[ea(5,R)]=em2('',sIV);
     ws[ea(6,R)]=em2('정산 구분',sIL);ws[ea(7,R)]=em2(tabLabel,es2(EC.WHITE,'1A237E',true,11,'left'));R++;
     ws[ea(0,R)]=em2('담당자',sIL);ws[ea(1,R)]=em2(manager,sIV);m.push({s:{r:R,c:1},e:{r:R,c:2}});ws[ea(2,R)]=em2('',sIV);
     ws[ea(3,R)]=em2('작성일자',sIL);ws[ea(4,R)]=em2(today,sIV);m.push({s:{r:R,c:4},e:{r:R,c:5}});ws[ea(5,R)]=em2('',sIV);
     ws[ea(6,R)]=em2('총 정산금액',sIL);ws[ea(7,R)]=em2(totalNet,sIVN,true);R++;
-    ['항목','이름/업체명','세부항목','지급금액','부가세','원천세','예술인고용보험','실지급액'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sH));R++;
-    let ri=0;
-    cats.forEach(cat=>{
-      const cRows=invRows.filter(r=>r.cat===cat);
-      const startR=R;
-      cRows.forEach((r,i)=>{
-        const s=ri%2===0?sN:sE;const sa=ri%2===0?sA:sAE;
-        ws[ea(0,R)]=em2(i===0?cat:'',sCat);
-        ws[ea(1,R)]=em2(r.name,s);ws[ea(2,R)]=em2(r.sub,s);
-        ws[ea(3,R)]=em2(r.supply,sa,true);ws[ea(4,R)]=em2(r.vat,sa,true);
-        ws[ea(5,R)]=em2(r.tax,sa,true);ws[ea(6,R)]=em2(r.ins,sa,true);
-        ws[ea(7,R)]=em2(r.net,sa,true);R++;ri++;
+    // 열 헤더 (화면과 동일 순서)
+    ['항목','세부항목','이름/업체명','지급금액','부가세','원천세','예술인고용보험','실지급액'].forEach((h,c)=>ws[ea(c,R)]=em2(h,sH));R++;
+    // 섹션별 렌더 함수 (renderInvoice의 sectionHtml과 동일 그룹핑)
+    const writeSection=(list,secStyle)=>{
+      if(!list.length)return;
+      list.sort((a,b)=>(+a.code||0)-(+b.code||0)||(a.sub||'').localeCompare(b.sub||'','ko')||(a.name||'').localeCompare(b.name||'','ko'));
+      const sNet=list.reduce((s,r)=>s+r.net,0);
+      const secLabel=secStyle===sSecP?`👤 개인 지급 (${list.length}건 · 실지급 ${sNet.toLocaleString('ko-KR')}원)`:`🏢 업체 지급 (${list.length}건 · 실지급 ${sNet.toLocaleString('ko-KR')}원)`;
+      ws[ea(0,R)]=em2(secLabel,secStyle);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',secStyle);m.push({s:{r:R,c:0},e:{r:R,c:COLS-1}});R++;
+      // 항목(예산코드명)별 그룹핑
+      const items=[...new Set(list.map(r=>r.item))];
+      let ri=0;
+      items.forEach(it=>{
+        const iRows=list.filter(r=>r.item===it);
+        const startR=R;
+        iRows.forEach((r,i)=>{
+          const s=ri%2===0?sN:sE;const sa=ri%2===0?sA:sAE;
+          ws[ea(0,R)]=em2(i===0?it:'',sItem);
+          ws[ea(1,R)]=em2(r.sub,s);ws[ea(2,R)]=em2(r.name,s);
+          ws[ea(3,R)]=em2(r.supply,sa,true);ws[ea(4,R)]=em2(r.vat,sa,true);
+          ws[ea(5,R)]=em2(r.tax,sa,true);ws[ea(6,R)]=em2(r.ins,sa,true);
+          ws[ea(7,R)]=em2(r.net,sa,true);R++;ri++;
+        });
+        if(iRows.length>1)m.push({s:{r:startR,c:0},e:{r:startR+iRows.length-1,c:0}});
       });
-      if(cRows.length>1)m.push({s:{r:startR,c:0},e:{r:startR+cRows.length-1,c:0}});
-    });
-    if(!invRows.length){ws[ea(0,R)]=em2('내역 없음',sN);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sN);R++;}
+    };
+    writeSection(persons,sSecP);
+    writeSection(bizes,sSecB);
+    if(!allRows.length){ws[ea(0,R)]=em2('내역 없음',sN);for(let c=1;c<COLS;c++)ws[ea(c,R)]=em2('',sN);R++;}
+    // 합계 행
     ws[ea(0,R)]=em2('합 계',sTT);for(let c=1;c<3;c++)ws[ea(c,R)]=em2('',sTT);m.push({s:{r:R,c:0},e:{r:R,c:2}});
     ws[ea(3,R)]=em2(totalSupply,sTTA,true);
-    ws[ea(4,R)]=em2(invRows.reduce((a,r)=>a+r.vat,0),sTTA,true);
-    ws[ea(5,R)]=em2(invRows.reduce((a,r)=>a+r.tax,0),sTTA,true);
-    ws[ea(6,R)]=em2(invRows.reduce((a,r)=>a+r.ins,0),sTTA,true);
+    ws[ea(4,R)]=em2(allRows.reduce((a,r)=>a+r.vat,0),sTTA,true);
+    ws[ea(5,R)]=em2(allRows.reduce((a,r)=>a+r.tax,0),sTTA,true);
+    ws[ea(6,R)]=em2(allRows.reduce((a,r)=>a+r.ins,0),sTTA,true);
     ws[ea(7,R)]=em2(totalNet,sTTA,true);R++;
     ws['!ref']=`A1:H${R}`;ws['!merges']=m;
-    ws['!cols']=[{wch:14},{wch:14},{wch:18},{wch:13},{wch:11},{wch:11},{wch:14},{wch:13}];
+    ws['!cols']=[{wch:18},{wch:14},{wch:16},{wch:13},{wch:11},{wch:11},{wch:14},{wch:13}];
     XLSX.utils.book_append_sheet(wb,ws,'정산서');
   }
   // 개인지급 시트
   {const ws={};const m=[];let R=0;
-    const hdrs=['월','항목','세부항목','이름','주민번호','은행','계좌번호','예금주','공급가액','세액(3.3%)','예술인보험','실지급액','비고'];
+    const hdrs=['항목','세부항목','이름','주민번호','은행','계좌번호','예금주','공급가액','세액(3.3%)','예술인보험','실지급액','비고'];
     ws[ea(0,R)]=em2(`${proj} 월정산 (개인지급)`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-    const rows=Object.values(personData||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
+    const mFilter2=+(currentInvCfg?.month||0);
+    const rows=Object.values(personData||{}).filter(r=>r.invTabId ? r.invTabId===currentInvTab : (!mFilter2||+r.month===mFilter2)).sort((a,b)=>(+a.month||0)-(+b.month||0));
     let tots={sup:0,tax:0,ins:0,net:0};
     rows.forEach((r,ri)=>{
       const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
       const sup=+r.supply||0;const tax=calcTax(sup);const ins=calcIns(sup);const net=calcPersonNet(sup);
       tots.sup+=sup;tots.tax+=tax;tots.ins+=ins;tots.net+=net;
-      [r.month,r.code,r.category,r.name,r.rrn,r.bank,r.account,r.holder].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
-      [sup,tax,ins,net].forEach((v,c)=>ws[ea(c+8,R)]=em2(v,sa,true));
-      ws[ea(12,R)]=em2(r.notes||'',s);R++;
+      [r.code,r.category,r.name,r.rrn,r.bank,r.account,r.holder].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
+      [sup,tax,ins,net].forEach((v,c)=>ws[ea(c+7,R)]=em2(v,sa,true));
+      ws[ea(11,R)]=em2(r.notes||'',s);R++;
     });
-    ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<8;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:7}});
-    [tots.sup,tots.tax,tots.ins,tots.net].forEach((v,c)=>ws[ea(c+8,R)]=em2(v,sTotA,true));ws[ea(12,R)]=em2('',sTot);R++;
-    ws['!ref']=`A1:M${R}`;ws['!merges']=m;
-    ws['!cols']=[{wch:5},{wch:12},{wch:12},{wch:10},{wch:14},{wch:10},{wch:16},{wch:10},{wch:13},{wch:12},{wch:12},{wch:13},{wch:14}];
+    ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<7;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:6}});
+    [tots.sup,tots.tax,tots.ins,tots.net].forEach((v,c)=>ws[ea(c+7,R)]=em2(v,sTotA,true));ws[ea(11,R)]=em2('',sTot);R++;
+    ws['!ref']=`A1:L${R}`;ws['!merges']=m;
+    ws['!cols']=[{wch:12},{wch:12},{wch:10},{wch:14},{wch:10},{wch:16},{wch:10},{wch:13},{wch:12},{wch:12},{wch:13},{wch:14}];
     XLSX.utils.book_append_sheet(wb,ws,'개인지급');
   }
   // 업체지급 시트
   {const ws={};const m=[];let R=0;
-    const hdrs=['월','항목','세부항목','업체명','사업자번호','은행','계좌번호','예금주','공급가액','부가세','고용보험료','실지급액','비고'];
+    const hdrs=['항목','세부항목','업체명','사업자번호','은행','계좌번호','예금주','공급가액','부가세','고용보험료','실지급액','비고'];
     ws[ea(0,R)]=em2(`${proj} 월정산 (업체지급)`,sTitle);for(let c=1;c<hdrs.length;c++)ws[ea(c,R)]=em2('',sTitle);m.push({s:{r:R,c:0},e:{r:R,c:hdrs.length-1}});R++;
     hdrs.forEach((h,c)=>ws[ea(c,R)]=em2(h,sHdr));R++;
-    const rows=Object.values(bizData||{}).sort((a,b)=>(+a.month||0)-(+b.month||0));
+    const mFilter3=+(currentInvCfg?.month||0);
+    const rows=Object.values(bizData||{}).filter(r=>r.invTabId ? r.invTabId===currentInvTab : (!mFilter3||+r.month===mFilter3)).sort((a,b)=>(+a.month||0)-(+b.month||0));
     let tots={sup:0,vat:0,tax:0,net:0};
     rows.forEach((r,ri)=>{
       const s=ri%2===0?sNorm:sEven;const sa=ri%2===0?sAmt:sAmtE;
       const sup=+r.supply||0;const vat=+r.vat||0;const tax=+r.tax||0;const net=calcBizNet(sup,vat,tax);
       tots.sup+=sup;tots.vat+=vat;tots.tax+=tax;tots.net+=net;
-      [r.month,r.code,r.category,r.name,r.bizNum,r.bank,r.account,r.holder].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
-      [sup,vat,tax,net].forEach((v,c)=>ws[ea(c+8,R)]=em2(v,sa,true));
-      ws[ea(12,R)]=em2(r.notes||'',s);R++;
+      [r.code,r.category,r.name,r.bizNum,r.bank,r.account,r.holder].forEach((v,c)=>ws[ea(c,R)]=em2(v,s));
+      [sup,vat,tax,net].forEach((v,c)=>ws[ea(c+7,R)]=em2(v,sa,true));
+      ws[ea(11,R)]=em2(r.notes||'',s);R++;
     });
-    ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<8;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:7}});
-    [tots.sup,tots.vat,tots.tax,tots.net].forEach((v,c)=>ws[ea(c+8,R)]=em2(v,sTotA,true));ws[ea(12,R)]=em2('',sTot);R++;
-    ws['!ref']=`A1:M${R}`;ws['!merges']=m;
-    ws['!cols']=[{wch:5},{wch:12},{wch:12},{wch:14},{wch:14},{wch:10},{wch:16},{wch:10},{wch:13},{wch:11},{wch:11},{wch:13},{wch:14}];
+    ws[ea(0,R)]=em2('합 계',sTot);for(let c=1;c<7;c++)ws[ea(c,R)]=em2('',sTot);m.push({s:{r:R,c:0},e:{r:R,c:6}});
+    [tots.sup,tots.vat,tots.tax,tots.net].forEach((v,c)=>ws[ea(c+7,R)]=em2(v,sTotA,true));ws[ea(11,R)]=em2('',sTot);R++;
+    ws['!ref']=`A1:L${R}`;ws['!merges']=m;
+    ws['!cols']=[{wch:12},{wch:12},{wch:14},{wch:14},{wch:10},{wch:16},{wch:10},{wch:13},{wch:11},{wch:11},{wch:13},{wch:14}];
     XLSX.utils.book_append_sheet(wb,ws,'업체지급');
   }
   if(!wb.SheetNames.length){showToast('⚠️ 내보낼 데이터가 없습니다.');return;}
